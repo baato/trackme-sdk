@@ -1,6 +1,6 @@
 # TrackMe SDK: Integration guide
 
-For developers adding live location sharing to an **Android** or **iOS** app. Each step shows Kotlin and Swift side by side. Working examples of everything here are in `sample-android/` and `sample-ios/`; [06-sample-apps.md](06-sample-apps.md) maps each SDK call to its screen.
+For developers adding live location sharing to an **Android** or **iOS** app. Each step shows Kotlin and Swift side by side. Working examples of everything here are in `examples/android` and `examples/ios`, which use the published packages exactly as below (`sample-android/` and `sample-ios/` are the same apps built from the SDK source); [06-sample-apps.md](06-sample-apps.md) maps each SDK call to its screen.
 
 ---
 
@@ -8,7 +8,7 @@ For developers adding live location sharing to an **Android** or **iOS** app. Ea
 
 | | Android | iOS |
 |---|---|---|
-| Package | `io.baato.trackme:trackme-sdk` (AAR via Maven) | SwiftPM: `TrackMeSDK` (XCFramework) + `TrackMeLiveActivity` |
+| Package | `com.github.baato.trackme-sdk:trackme-sdk-android` (AAR via JitPack) | SwiftPM: `TrackMeSDK` (XCFramework) + `TrackMeLiveActivity` |
 | Minimum OS | Android 7.0 (API 24) | iOS 15 (Live Activity 16.1+, interactive 17+) |
 | Build requirement | `compileSdk` ≥ 37 | Xcode 16+ |
 | Entry point | `TrackMe` | `TrackMe.shared` |
@@ -24,19 +24,28 @@ Features: trips (create / join by code / preview / list / detail / rename / end 
 ```kotlin
 // settings.gradle.kts
 dependencyResolutionManagement {
-    repositories { google(); mavenCentral(); mavenLocal() /* while testing local builds */ }
+    repositories {
+        google()
+        mavenCentral()
+        // JitPack builds artifacts from any GitHub repo: only let it serve the TrackMe SDK.
+        maven("https://jitpack.io") { content { includeGroup("com.github.baato.trackme-sdk") } }
+    }
 }
 
 // app/build.gradle.kts
 android { compileSdk = 37 }
-dependencies { implementation("io.baato.trackme:trackme-sdk:0.1.0") }
+dependencies { implementation("com.github.baato.trackme-sdk:trackme-sdk-android:0.1.0") }
 ```
+
+The version is the GitHub release tag. Use the `-android` artifact: it's the plain AAR. (`com.github.baato.trackme-sdk:trackme-sdk` is the Kotlin Multiplatform root, for KMP projects.)
+
+**Unreleased local builds:** `./gradlew :trackme-sdk:publishToMavenLocal` in the SDK repo, add `mavenLocal()` to your repositories, and use `io.baato.trackme:trackme-sdk-android:<version>`.
 
 The SDK's manifest merges in the location, foreground-service and notification permissions, and the `TrackMeLocationService` declaration. You add nothing unless you want "Allow all the time" (see §4).
 
 ### iOS
 
-**SwiftPM (recommended).** *File → Add Package Dependencies…* → the TrackMe repo URL → the release version:
+**SwiftPM (recommended).** *File → Add Package Dependencies…* → `https://github.com/baato/trackme-sdk` → the release version (`0.1.0`, *Up to Next Major*):
 - your **app** target: `TrackMeSDK` + `TrackMeLiveActivity`
 - your **Widget Extension** target (only for the Live Activity, §8): `TrackMeLiveActivity`
 

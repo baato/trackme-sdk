@@ -1,0 +1,6 @@
+# Copy to local.properties (git-ignored) and fill in. Android Studio also writes sdk.dir here.
+# DEMO ONLY: a real app never ships the API secret; its backend logs in and hands the app a token.
+trackme.apiSecret=your_api_secret_here
+baato.accessToken=your_baato_access_token_here
+# true = Developer screens next to the Live map, false = Live map only. Empty: on for debug, off for release.
+trackme.devTools=

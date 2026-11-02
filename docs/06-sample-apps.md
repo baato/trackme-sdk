@@ -5,6 +5,8 @@ Both samples (`sample-android/`, Compose; `sample-ios/`, SwiftUI) have two faces
 - **Live map:** the showcase. A ready-to-use "share my trip live" feature on a Baato map (MapLibre, `breeze` style). This is what an integrating app would ship.
 - **Developer:** five sections (Trips, Share, Viewer, Inbox, SDK) plus a trip screen. **Every public SDK call has a button**, and the SDK section keeps an event log.
 
+The same two apps also live in `examples/android` and `examples/ios`, built against the **published** SDK (JitPack / SwiftPM) instead of the source; `scripts/sync-examples.sh` copies the code across. Everything below applies to both; for the examples, the secrets files are `examples/android/local.properties` and `examples/ios/Secrets.xcconfig`.
+
 All SDK calls go through one file per app: `SampleViewModel.kt` on Android, `SampleModel.swift` on iOS. Read those first; the screens only call into them.
 
 ## Setup: secrets and the dev-tools flag

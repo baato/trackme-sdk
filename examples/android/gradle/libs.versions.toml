@@ -1,0 +1,28 @@
+[versions]
+trackme = "0.1.0"   # the published SDK release (GitHub tag)
+kotlin = "2.4.20"
+agp = "9.4.0"
+compose-bom = "2026.09.00"
+activity-compose = "1.13.0"
+lifecycle = "2.11.0"
+maplibre = "13.5.2"
+android-compileSdk = "37"   # the SDK requires compileSdk 37
+android-targetSdk = "36"
+android-minSdk = "24"
+
+[libraries]
+# JitPack serves each module of the SDK build under com.github.baato.trackme-sdk.
+trackme-sdk = { module = "com.github.baato.trackme-sdk:trackme-sdk-android", version.ref = "trackme" }
+
+compose-bom = { module = "androidx.compose:compose-bom", version.ref = "compose-bom" }
+compose-material3 = { module = "androidx.compose.material3:material3" }
+compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
+activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activity-compose" }
+lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
+lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }
+maplibre-android = { module = "org.maplibre.gl:android-sdk", version.ref = "maplibre" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }

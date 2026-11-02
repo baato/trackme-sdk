@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Location, foreground-service and notification permissions come merged from the TrackMe SDK manifest.
+  Only add what the SDK deliberately leaves out:
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Optional "Allow all the time": only needed to START sharing while the app is in background. -->
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+
+    <application
+        android:label="TrackMe Example"
+        android:icon="@android:drawable/ic_menu_mylocation"
+        android:theme="@android:style/Theme.Material.Light.NoActionBar">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:windowSoftInputMode="adjustResize">
+            <!-- adjustResize: the keyboard gives Compose its height (imePadding) instead of panning the whole window,
+                 which threw the focused field to the top until you started typing. -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

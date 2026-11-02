@@ -1,0 +1,71 @@
+# Standalone example app: uses the PUBLISHED TrackMe SDK from SwiftPM, exactly like a customer app.
+# (sample-ios/ is the same app built against the SDK source via Gradle, for SDK development.)
+#   brew install xcodegen
+#   cd examples/ios && cp Secrets.example.xcconfig Secrets.xcconfig && xcodegen && open TrackMeExample.xcodeproj
+name: TrackMeExample
+options:
+  bundleIdPrefix: io.baato.trackme
+  deploymentTarget:
+    iOS: "15.0"
+configFiles:
+  Debug: Secrets.xcconfig     # DEMO ONLY, git-ignored. Copy Secrets.example.xcconfig → Secrets.xcconfig
+  Release: Secrets.xcconfig
+packages:
+  TrackMe:                         # products: TrackMeSDK (XCFramework) + TrackMeLiveActivity
+    url: https://github.com/baato/trackme-sdk
+    from: 0.1.0
+  MapLibre:                        # the live map (Baato breeze style)
+    url: https://github.com/maplibre/maplibre-gl-native-distribution
+    from: 6.29.0
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+targets:
+  TrackMeExample:
+    type: application
+    platform: iOS
+    sources:
+      - TrackMeExample
+    info:
+      path: TrackMeExample/Info.plist
+      properties:
+        CFBundleDisplayName: TrackMe Example
+        UILaunchScreen: {}
+        NSLocationWhenInUseUsageDescription: Share your live location with members of your trip.
+        NSLocationAlwaysAndWhenInUseUsageDescription: Keep sharing your location with your trip while the app is in the background.
+        UIBackgroundModes: [location]          # background sharing
+        NSSupportsLiveActivities: true         # lock-screen Live Activity (iOS 16.1+)
+        TrackMeApiSecret: $(TRACKME_API_SECRET) # DEMO ONLY: read by DemoAuth.swift
+        BaatoAccessToken: $(BAATO_ACCESS_TOKEN) # Baato map style key, read by BaatoMap.swift
+        TrackMeDevTools: $(TRACKME_DEV_TOOLS)   # YES = Developer screens next to the Live map; empty = on for Debug only
+    dependencies:
+      - target: TrackMeExampleWidget
+      - package: TrackMe
+        product: TrackMeSDK
+      - package: TrackMe
+        product: TrackMeLiveActivity
+      - package: MapLibre
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.baato.trackme.example
+
+  # Widget Extension that draws the Live Activity (lock screen + Dynamic Island).
+  TrackMeExampleWidget:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "16.1"
+    sources:
+      - TrackMeExampleWidget
+    dependencies:
+      - package: TrackMe
+        product: TrackMeLiveActivity
+    info:
+      path: TrackMeExampleWidget/Info.plist
+      properties:
+        CFBundleDisplayName: TrackMe Live Activity
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.baato.trackme.example.widget
+        SKIP_INSTALL: YES

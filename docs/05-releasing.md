@@ -4,10 +4,12 @@ How the repo goes public on GitHub, and how a version of TrackMe gets from this 
 
 | Platform | Artifact | How apps add it |
 |---|---|---|
-| Android | `io.baato.trackme:trackme-sdk:<version>` (AAR + Gradle module metadata) | `implementation("io.baato.trackme:trackme-sdk:<version>")` from a Maven repository |
+| Android | JitPack (current): `com.github.baato.trackme-sdk:trackme-sdk-android:<tag>`, built from the git tag. Own group `io.baato.trackme` if moved to Maven Central or a Baato repository | `implementation("com.github.baato.trackme-sdk:trackme-sdk-android:<tag>")` with `maven("https://jitpack.io")` |
 | iOS | `TrackMeSDK.xcframework` (static, device + Apple-silicon simulator) and the `TrackMeLiveActivity` Swift package | SwiftPM: the repo's git URL and a version tag |
 
 The version comes from `-Ptrackme.version=…` (default `0.1.0` in `trackme-sdk/build.gradle.kts`). Use the same number on both platforms.
+
+**Released:** `0.1.0` (2 Nov 2026): SwiftPM release with `TrackMeSDK.xcframework.zip`, JitPack build green. Check each release with the apps in `examples/`, which install the published packages.
 
 ---
 
@@ -136,15 +138,15 @@ Then on real devices: create a trip and join it from a second device. Share with
 
 ### J. JitPack
 
-`jitpack.yml` tells JitPack to use JDK 21 (the Gradle daemon requires it), accept the Android SDK licences for compileSdk 37, and run `publishToMavenLocal` for the tag being built. JitPack builds on Linux, so the iOS targets are skipped; iOS ships through SwiftPM (section 7).
+`jitpack.yml` tells JitPack to use JDK 21 (the Gradle daemon requires it), accept the Android SDK licences for compileSdk 37, and run `publishToMavenLocal` for the tag being built. JitPack builds on Linux. It also publishes iOS klibs (Kotlin 2.4 can compile them there), but nothing uses them: iOS ships through SwiftPM (section 7).
 
-1. **Domain:** Baato already publishes `io.baato` packages through JitPack's custom-domain setup, so the same domain applies: coordinates come out under `io.baato`, not `com.github.baato`. If that setup is tied to specific repos, add `baato/trackme-sdk` there too.
+1. **Group:** the 0.1.0 build came out as `com.github.baato.trackme-sdk:<artifact>`: JitPack's own group for a multi-module repo. Baato's `io.baato` custom domain doesn't apply to this repo. To get `io.baato…` coordinates, set the domain up for `baato/trackme-sdk` on JitPack (DNS TXT record). Existing `com.github…` coordinates keep working, so apps can switch whenever they upgrade.
 2. **Release:** push the tag (e.g. `0.1.0`, the same tag the iOS release uses), then open `https://jitpack.io/#baato/trackme-sdk`, click **Get it** next to the tag, and wait for the build log to go green. Do this yourself straight after tagging, so no customer waits for the first build.
 3. **Read the coordinates off the build log.** A KMP library publishes two artifacts: `trackme-sdk`, the multiplatform entry, and `trackme-sdk-android`, the AAR. JitPack lists both with their final group and name. Apps should use the **`trackme-sdk-android`** one, which is a plain AAR with a POM. That works even if JitPack renames the group of the multiplatform entry.
 4. **Apps:**
    ```kotlin
    dependencyResolutionManagement { repositories { google(); mavenCentral(); maven("https://jitpack.io") } }
-   dependencies { implementation("<group from the JitPack log>:trackme-sdk-android:0.1.0") }
+   dependencies { implementation("com.github.baato.trackme-sdk:trackme-sdk-android:0.1.0") }   // group as listed in the 0.1.0 build log
    ```
 5. **If the first build fails**, the log says why. The usual causes are a missing Android platform (add `sdkmanager "platforms;android-37"` to `before_install`) or the JDK. Fix it, tag a new patch version, and build again. **Never move a published tag:** iOS uses the same tags.
 
@@ -177,7 +179,7 @@ Then on real devices: create a trip and join it from a second device. Share with
 4. Apps:
    ```kotlin
    dependencyResolutionManagement { repositories { google(); mavenCentral(); maven("https://maven.baato.io/releases") } }
-   dependencies { implementation("io.baato.trackme:trackme-sdk:0.1.0") }
+   dependencies { implementation("io.baato.trackme:trackme-sdk-android:0.1.0") }
    ```
 
 ### Testing locally (any option)

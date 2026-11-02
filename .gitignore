@@ -37,3 +37,8 @@ secring.*
 
 # Personal location data (recorded tracks for the simulator). Keep them local.
 *.gpx
+
+# Standalone examples (examples/android uses local.properties, ignored above)
+examples/ios/*.xcodeproj
+examples/ios/Secrets.xcconfig
+examples/ios/*/Info.plist
