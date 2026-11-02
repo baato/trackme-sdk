@@ -1,0 +1,14 @@
+# JitPack builds the ANDROID library from a git tag (https://jitpack.io/#baato/trackme-sdk).
+# It builds on Linux, so the iOS targets are skipped there; iOS ships via SwiftPM + GitHub Releases
+# (docs/05-releasing.md, section 7).
+
+jdk:
+  - openjdk21          # gradle/gradle-daemon-jvm.properties asks for JDK 21
+
+before_install:
+  # compileSdk 37: accept the SDK licences so the Android Gradle plugin can download the platform it needs.
+  - yes | sdkmanager --licenses > /dev/null || true
+
+install:
+  # $VERSION is the git tag JitPack is building (e.g. 0.1.0).
+  - ./gradlew :trackme-sdk:publishToMavenLocal -Ptrackme.version=$VERSION -Pkotlin.native.ignoreDisabledTargets=true --no-configuration-cache --stacktrace

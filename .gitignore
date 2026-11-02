@@ -1,0 +1,39 @@
+# Gradle / Kotlin
+.gradle/
+build/
+.kotlin/
+local.properties
+captures/
+*.hprof
+
+# IDE
+.idea/
+*.iml
+.fleet/
+.vscode/
+
+# macOS / Xcode / SwiftPM
+.DS_Store
+xcuserdata/
+DerivedData/
+*.xcframework
+.swiftpm/
+.build/
+sample-ios/*.xcodeproj
+*.xcworkspace/xcuserdata/
+
+# Secrets: never commit. Real values live in local.properties, sample-ios/Secrets.xcconfig, ~/.gradle/gradle.properties
+.env
+*.env
+sample-ios/Secrets.xcconfig
+*.jks
+*.keystore
+*.p12
+*.p8
+*.mobileprovision
+*.gpg
+*.asc
+secring.*
+
+# Personal location data (recorded tracks for the simulator). Keep them local.
+*.gpx

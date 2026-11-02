@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Merged into every app that depends on the SDK.
+
+  Deliberately NOT declared: ACCESS_BACKGROUND_LOCATION. Declaring it triggers a Google Play policy review
+  for every app using the SDK. Apps that want "Allow all the time" add it to their own manifest; the SDK
+  detects it at runtime.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <!-- Keeps sharing alive with the screen off (Android 9+ / 14+). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+
+    <!-- Android 13+: lets the "sharing location" notification show. Sharing works even if denied. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <application>
+        <service
+            android:name="io.baato.trackme.sharing.TrackMeLocationService"
+            android:exported="false"
+            android:foregroundServiceType="location" />
+    </application>
+</manifest>

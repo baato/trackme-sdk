@@ -1,0 +1,8 @@
+// Root build file: only *declares* plugin versions (apply false) so every module shares one version.
+plugins {
+    alias(libs.plugins.kotlin.multiplatform) apply false
+    alias(libs.plugins.kotlin.serialization) apply false
+    alias(libs.plugins.android.kotlin.multiplatform.library) apply false
+    alias(libs.plugins.android.application) apply false   // sample-android
+    alias(libs.plugins.compose.compiler) apply false      // sample-android
+}
