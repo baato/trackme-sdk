@@ -32,6 +32,18 @@ sealed class TrackMeEvent {
     /** Someone joined the watched trip (`member_changed`). Refresh the member list if you show one. */
     data class MemberChanged(val change: io.baato.trackme.realtime.MemberChange) : TrackMeEvent()
 
+    /**
+     * A member of the watched trip started, paused, resumed or stopped sharing (`member_changed` with
+     * `change` = "sharing" / "paused" / "stopped"). Show it at once instead of waiting for their positions to stop.
+     * Needs the backend's `sharing_state` support; until then this event never arrives.
+     */
+    data class MemberSharingChanged(
+        val tripId: Long,
+        val userId: Long,
+        val displayName: String?,
+        val state: io.baato.trackme.model.MemberSharingState,
+    ) : TrackMeEvent()
+
     /** The watched trip ended (owner ended it, or it expired). The SDK stops watching it. */
     data class TripEnded(val tripId: Long?, val reason: String?) : TrackMeEvent()
 

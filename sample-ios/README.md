@@ -23,6 +23,9 @@ Files:
 - `BaatoMap.swift`: MapLibre map with the Baato `breeze` style, member dots; the dev-tools flag (`AppConfig`)
 - `TripsViews.swift`: Trips tab and the trip screen (rename, end, leave, remove member, delete, view link, history, live)
 - `OtherViews.swift`: Share, Viewer, Inbox and SDK tabs
+- `LocationAccess.swift`: the map's location pill and the "Location access" sheet (what each level means, one action to improve it)
+- `DurationPicker.swift`: trip length presets plus Custom (any minutes; the server sets the limits)
+- `LocateButton.swift`: the round "show me" button (located / searching / disabled)
 
 What each screen covers, and a two-device test script: [docs/06-sample-apps.md](../docs/06-sample-apps.md).
 - `DemoAuth.swift`: demo-only login, and a `TrackMeTokenProvider` written in Swift

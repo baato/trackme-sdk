@@ -13,11 +13,9 @@ struct TripsTab: View {
         Form {
             Section(header: Text("Create a trip · trips.create"), footer: Text("The trip ends by itself when the duration runs out.")) {
                 TextField("Name (optional)", text: $tripName)
-                Picker("Duration", selection: $minutes) {
-                    Text("5 min").tag(5); Text("15 min").tag(15); Text("1 h").tag(60); Text("4 h").tag(240)
-                }
-                .pickerStyle(.segmented)
+                DurationPicker(presets: [("5 min", 5), ("15 min", 15), ("1 h", 60), ("4 h", 240)], minutes: $minutes)
                 Button("Create") { model.createTrip(name: tripName, minutes: minutes) }
+                    .disabled(minutes < 0)
                 if let c = model.created {
                     Text("Join code: \(c.joinCode)").font(.title2.monospaced())
                     Text("Ends in \(formatSeconds(c.remainingSeconds))").font(.caption)
@@ -161,14 +159,14 @@ struct TripDetailView: View {
                         let isMe = m.fullName != nil && m.fullName == model.session?.fullName
                         Text("\(m.fullName ?? "User \(m.userId)")\(isMe ? " (you)" : "")").bold()
                         Text("\(m.role) · id \(m.userId)").font(.caption)
-                        // A live socket position (if one arrived) beats the snapshot from trips.detail().
-                        if let p = model.livePositions[m.userId] {
-                            Text(String(format: "%.5f, %.5f · live", p.latitude, p.longitude)
+                        // The newer of the live socket position and the snapshot; "live" only while positions keep coming.
+                        let status = model.memberStatus(m, tripId: trip.id, loadedAt: model.detailLoadedAt, now: Date())
+                        if let p = model.newestLive(m, tripId: trip.id, loadedAt: model.detailLoadedAt, now: Date()) {
+                            Text(String(format: "%.5f, %.5f · ", p.latitude, p.longitude) + status
                                  + (p.speedMetersPerSecond.map { String(format: " · %.1f m/s", $0.doubleValue) } ?? ""))
                                 .font(.caption)
                         } else if m.hasPosition, let lat = m.lat, let lon = m.lon {
-                            Text(String(format: "%.5f, %.5f · ", lat.doubleValue, lon.doubleValue)
-                                 + "\(formatSeconds(m.fixAgeSeconds?.int64Value ?? 0)) ago").font(.caption)
+                            Text(String(format: "%.5f, %.5f · ", lat.doubleValue, lon.doubleValue) + status).font(.caption)
                         } else {
                             Text("no position yet").font(.caption)
                         }

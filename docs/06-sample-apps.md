@@ -32,14 +32,21 @@ The map starts centered on Kathmandu and moves to you once location is allowed; 
 
 | State | Panel | SDK calls behind it |
 |---|---|---|
-| No live trip | **Start a trip** (name, 30 min to 4 h), then "Start & share my location"; or **Join** | `trips.create`, then `sharing.start` and `realtime.watchTrip` |
+| No live trip | **Start a trip** (name; 30 min, 1 h, 2 h, 4 h or **Custom**: any whole number of minutes, digits only. The limits are the server's, 5–1440 today, and an out-of-range value shows the server's message), then "Start & share my location"; or **Join** | `trips.create`, then `sharing.start` and `realtime.watchTrip` |
 | Join → paste an invite | Accepts the full invite message, a view link or a bare code. The trip's people appear on the map right away, with **Join**. Joining shows everyone; your own location is shared only when you tap **Share my location too** afterwards | `realtime.watchShare(token)` (the app takes the token out of the link), `trips.preview(code)`; then `trips.join` and `watchTrip` |
-| In a live trip | Name and countdown, then the **join code** in large type (Copy, Copy invite, Share), member chips (live / "2 min ago"), a share / pause / resume button, and **Leave trip**, or **End trip** for the owner | `trips.detail`, `TripPosition` / `MemberChanged` events, `sharing.pause` / `resume`, `trips.viewLink`, `trips.leave` / `end` |
+| In a live trip | Name, countdown and a time-left bar, then the **join code** in large type (Copy, Copy invite, Share), member chips (live / "2 min ago"), a share / pause / resume button, and **Leave trip**, or **End trip** for the owner | `trips.detail`, `TripPosition` / `MemberChanged` events, `sharing.pause` / `resume`, `trips.viewLink`, `trips.leave` / `end` |
 | No location permission | "Allow location to share" (or "…in Settings" when denied for good); sharing starts by itself once granted | `location.permissionStatus`, `LocationPermissionDenied(canAskAgain)` |
+| Location access, any time | The **location pill** under the top-left status: *No location access* (red), *While using* (orange), *Always* (green), plus *approx.* when precise location is off. Tapping it explains the three levels, marks yours, and offers the one useful action: Allow, Allow all the time, Turn on location, or Open Settings. It also warns when notifications are off (Android), since then the sharing notification can't show | `location.permissionStatus()`; the app asks |
 | Trip ended (owner ended it, or time ran out) | "Trip ended" and **Done** | `TripEnded` event |
 | Removed from the trip | Message, then back to "No live trip" | `Evicted` event |
 
 With several live trips, chips in the panel switch between them.
+
+**The locate button** (top right) shows where location stands. A blue gradient arrow means your position is known; tap to fly to you. A gray, pulsing arrow means access is allowed but there's no fix yet. A struck-through red arrow means no access, or location is off; tap to ask, or to see why. The icons are Material `near_me` / `near_me_disabled` on Android and SF Symbols `location.fill` / `location.slash.fill` on iOS.
+
+**Asking for location, without nagging.** The map asks once by itself, the first time it opens without access (Android: location plus notifications on 13+; iOS: While Using). After that it asks only when you tap the locate button, "Allow location", or the pill. When the system won't show its dialog any more ("don't ask again" on Android, any decision on iOS), those buttons open Settings instead. On iOS the map's blue dot is switched on only once access is granted, because MapLibre would otherwise ask by itself at launch. "Always" is optional: sharing you start in the app keeps running in the background without it, and it's only needed to *start* sharing from the background.
+
+**What "live" means on a member chip.** The server doesn't announce a pause: a paused or stopped phone simply stops uploading. So a member is *live* while their positions keep arriving, the newest no more than 45 s old (sharing re-sends at least every 30 s heartbeat, even when standing still). After that the chip ticks on as "50 s ago", "2 min ago" and so on. The dot and chip use whichever is newer, the socket position or the 5 s snapshot poll. An app that raises `heartbeatMillis` above ~40 s should widen that window to match. **Once the backend ships the proposed sharing state** ([trackme-api.md](trackme-api.md#proposed-sharing-state-pause-shows-at-once-on-other-phones)), a pause, resume or stop shows at once: the chip says **paused** or **not sharing** until that member's next position. The sample already handles it (`TrackMeEvent.MemberSharingChanged`, `TripMember.sharingState`).
 
 **Joining never shares by itself.** Your location goes out only after **Share my location too** (or Start & share for a trip you create). One caveat comes from the API: the server sends each upload to *every* live trip you're in. So if you're already sharing when you open an invite, the panel warns that joining adds this trip. Per-trip sharing, and live positions for members who aren't sharing, are planned on the backend. Until then, the *app* (not the SDK) reloads the trip snapshot every 5 s whenever no live position has arrived for 10 s. That's an app-side workaround, which an integrating app may copy or drop.
 
@@ -62,7 +69,7 @@ With several live trips, chips in the panel switch between them.
 | `TrackMe.checkHealth()` | SDK tab → "Check health" |
 | `TrackMe.state`, `isInitialized` | SDK tab → State |
 | `TrackMe.events` | handled in one place (`onEvent`), every event in the SDK tab's log |
-| `trips.create(name, durationMin)` | Trips tab → Create (5 min / 15 min / 1 h / 4 h) |
+| `trips.create(name, durationMin)` | Trips tab → Create (5 min / 15 min / 1 h / 4 h / Custom minutes) |
 | `trips.preview(code)` / `trips.join(code)` | Trips tab → Join with a code |
 | `trips.list(limit)` | Trips tab → My trips (Refresh) |
 | `trips.detail(tripId)` | Tap a trip → trip screen (Refresh in the top bar) |

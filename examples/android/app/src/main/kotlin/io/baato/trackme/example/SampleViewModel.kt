@@ -11,9 +11,11 @@ import io.baato.trackme.TrackMeResult
 import io.baato.trackme.initialize
 import io.baato.trackme.location.LocationPermissionStatus
 import io.baato.trackme.model.CreatedTrip
+import io.baato.trackme.model.MemberSharingState
 import io.baato.trackme.model.TrackMeNotification
 import io.baato.trackme.model.Trip
 import io.baato.trackme.model.TripDetail
+import io.baato.trackme.model.TripMember
 import io.baato.trackme.model.TripPreview
 import io.baato.trackme.realtime.MemberPosition
 import io.baato.trackme.sharing.SharingOptions
@@ -104,10 +106,18 @@ data class SampleUiState(
     val watchingLive: Boolean = false,
     /** Latest socket position per member of the open trip. Key = user id. */
     val livePositions: Map<Long, MemberPosition> = emptyMap(),
+    /** When each of [livePositions] arrived (epoch ms): a position only says "live" while new ones keep coming. */
+    val livePositionAt: Map<Long, Long> = emptyMap(),
+    /** Sharing state each member reported (TrackMeEvent.MemberSharingChanged) and when it arrived (epoch ms). */
+    val memberSharing: Map<Long, Pair<MemberSharingState, Long>> = emptyMap(),
     val history: String? = null,
 
     // ---- sharing tab ----
     val permission: LocationPermissionStatus? = null,
+    /** The map asked for location once this session (it asks by itself only once, so it never nags). */
+    val locationAutoAsked: Boolean = false,
+    /** Android stopped showing the permission dialog ("don't ask again"): only Settings can grant it now. */
+    val locationBlocked: Boolean = false,
     val options: SharingOptions = SharingOptions.Default,
 
     // ---- viewer tab (public view links) ----
@@ -128,6 +138,57 @@ data class SampleUiState(
     val log: List<String> = emptyList(),
 ) {
     val loggedIn: Boolean get() = login != null
+}
+
+/**
+ * How long a member still counts as "live" after their newest position. Sharing re-sends at least every heartbeat
+ * (30 s by default) even when standing still, so a longer silence means paused, stopped, offline or no GPS.
+ * The server doesn't announce a pause: silence is the only signal, for every member.
+ */
+const val LIVE_WINDOW_SECONDS = 45L
+
+/** Seconds since [userId]'s newest live (socket) position for [tripId], or null if none arrived. */
+fun SampleUiState.liveAgeSeconds(userId: Long, tripId: Long, now: Long): Long? {
+    if (liveTripId != tripId) return null
+    val p = livePositions[userId] ?: return null
+    val at = livePositionAt[userId] ?: return null
+    return (now - at) / 1000 + (p.fixAgeSeconds ?: 0)
+}
+
+/** Seconds since [m]'s fix in a trips.detail() snapshot loaded at [loadedAt], or null without a position. */
+fun snapshotAgeSeconds(m: TripMember, loadedAt: Long, now: Long): Long? =
+    if (m.hasPosition) (m.fixAgeSeconds ?: 0) + (now - loadedAt) / 1000 else null
+
+/**
+ * The member's newest reported sharing state and when it was known: the socket event or the trips.detail()
+ * snapshot loaded at [loadedAt], whichever is newer. Null until the backend supports `sharing_state`.
+ */
+fun SampleUiState.reportedSharing(m: TripMember, tripId: Long, loadedAt: Long): Pair<MemberSharingState, Long>? {
+    val event = memberSharing[m.userId]?.takeIf { liveTripId == tripId }
+    val snapshot = m.sharingState?.let { it to loadedAt }
+    return listOfNotNull(event, snapshot).maxByOrNull { it.second }
+}
+
+/**
+ * "paused" / "not sharing" when the member said so (and no position arrived since), otherwise "live",
+ * "2 min 5 s ago" or "no location" from whichever is newer: the live position or the snapshot.
+ */
+fun SampleUiState.memberStatus(m: TripMember, tripId: Long, loadedAt: Long, now: Long): String {
+    val reported = reportedSharing(m, tripId, loadedAt)
+    val liveAt = livePositionAt[m.userId]?.takeIf { liveTripId == tripId }
+    if (reported != null && reported.first != MemberSharingState.Sharing && (liveAt == null || liveAt <= reported.second)) {
+        return if (reported.first == MemberSharingState.Paused) "paused" else "not sharing"
+    }
+    val age = listOfNotNull(liveAgeSeconds(m.userId, tripId, now), snapshotAgeSeconds(m, loadedAt, now)).minOrNull()
+        ?: return "no location"
+    return if (age <= LIVE_WINDOW_SECONDS) "live" else "${formatSeconds(age)} ago"
+}
+
+/** The live position, unless the snapshot is newer (e.g. the socket missed some while the poll caught up). */
+fun SampleUiState.newestLive(m: TripMember, tripId: Long, loadedAt: Long, now: Long): MemberPosition? {
+    val live = liveAgeSeconds(m.userId, tripId, now) ?: return null
+    val snap = snapshotAgeSeconds(m, loadedAt, now)
+    return if (snap == null || live <= snap) livePositions[m.userId] else null
 }
 
 /**
@@ -165,8 +226,15 @@ class SampleViewModel(app: Application) : AndroidViewModel(app) {
                 val p = event.position
                 val id = p.userId
                 if (p.tripId != null && p.tripId != _ui.value.liveTripId) return   // a stale event from the previous trip
-                lastLivePositionAt = System.currentTimeMillis()
-                _ui.update { it.copy(livePositions = it.livePositions + (id to p)) }
+                val now = System.currentTimeMillis()
+                lastLivePositionAt = now
+                _ui.update { it.copy(livePositions = it.livePositions + (id to p), livePositionAt = it.livePositionAt + (id to now)) }
+            }
+            is TrackMeEvent.MemberSharingChanged -> {
+                log("${event.displayName ?: "Member ${event.userId}"}: ${event.state.name.lowercase()}")
+                if (event.tripId == _ui.value.liveTripId) {
+                    _ui.update { it.copy(memberSharing = it.memberSharing + (event.userId to (event.state to System.currentTimeMillis()))) }
+                }
             }
             is TrackMeEvent.MemberChanged -> {
                 log("${event.change.displayName ?: "Someone"} ${event.change.change}")
@@ -256,7 +324,17 @@ class SampleViewModel(app: Application) : AndroidViewModel(app) {
     // ======================= permission =======================
 
     fun refreshPermission() {
-        _ui.update { it.copy(permission = TrackMe.location.permissionStatus().getOrNull()) }
+        val p = TrackMe.location.permissionStatus().getOrNull()
+        _ui.update { it.copy(permission = p, locationBlocked = it.locationBlocked && p?.isGranted != true) }
+    }
+
+    fun markLocationAutoAsked() = _ui.update { it.copy(locationAutoAsked = true) }
+    fun setLocationBlocked(blocked: Boolean) = _ui.update { it.copy(locationBlocked = blocked) }
+
+    /** Location was just granted: if sharing from the map failed for lack of it, start it now. */
+    fun onLocationGranted() {
+        refreshPermission()
+        if (_ui.value.mapSharingError is TrackMeError.LocationPermissionDenied) startSharingFromMap()
     }
 
     // ======================= trips =======================
@@ -308,7 +386,7 @@ class SampleViewModel(app: Application) : AndroidViewModel(app) {
     fun closeTrip() {
         if (_ui.value.detail == null) return
         TrackMe.realtime.stopWatchingTrip()
-        _ui.update { it.copy(detail = null, watchingLive = false, liveTripId = null, livePositions = emptyMap(), history = null, viewLink = null) }
+        _ui.update { it.copy(detail = null, watchingLive = false, liveTripId = null, livePositions = emptyMap(), livePositionAt = emptyMap(), memberSharing = emptyMap(), history = null, viewLink = null) }
     }
 
     fun setWatchLive(on: Boolean) {
@@ -323,7 +401,7 @@ class SampleViewModel(app: Application) : AndroidViewModel(app) {
 
     /** One socket watches one trip; switching trips clears the positions of the previous one. */
     private fun watchLive(tripId: Long, onResult: (Boolean) -> Unit = {}) {
-        if (_ui.value.liveTripId != tripId) _ui.update { it.copy(liveTripId = tripId, livePositions = emptyMap()) }
+        if (_ui.value.liveTripId != tripId) _ui.update { it.copy(liveTripId = tripId, livePositions = emptyMap(), livePositionAt = emptyMap(), memberSharing = emptyMap()) }
         viewModelScope.launch {
             when (val r = TrackMe.realtime.watchTrip(tripId)) {   // suspends until the server confirms
                 is TrackMeResult.Success -> onResult(true)
@@ -562,7 +640,7 @@ class SampleViewModel(app: Application) : AndroidViewModel(app) {
         run("Removing member") {
             TrackMe.trips.removeMember(id, userId).handle {
                 log("Removed user $userId")
-                _ui.update { it.copy(livePositions = it.livePositions - userId) }
+                _ui.update { it.copy(livePositions = it.livePositions - userId, livePositionAt = it.livePositionAt - userId, memberSharing = it.memberSharing - userId) }
                 loadMapTrip(id)
             }
         }

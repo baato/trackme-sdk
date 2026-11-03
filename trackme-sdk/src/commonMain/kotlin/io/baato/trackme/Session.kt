@@ -150,12 +150,20 @@ internal suspend fun Throwable.toTrackMeError(): TrackMeError = when (this) {
     else -> TrackMeError.Unknown(message ?: this::class.simpleName ?: "Unknown error")
 }
 
-/** FastAPI errors: `{"detail":"text"}` or `{"detail":[{"msg":"...","loc":[...]}]}`. */
+/**
+ * FastAPI errors: `{"detail":"text"}` or `{"detail":[{"msg":"...","loc":["body","duration_min"]}]}`.
+ * Validation messages get their field name in front ("duration_min: Input should be …"): the bare `msg` doesn't
+ * say which input it means.
+ */
 internal fun extractDetail(body: String): String? = runCatching {
     when (val detail = TrackMeJson.parseToJsonElement(body).jsonObject["detail"]) {
         is JsonPrimitive -> detail.contentOrNull
-        is JsonArray -> detail.mapNotNull { (it as? JsonObject)?.get("msg")?.jsonPrimitive?.contentOrNull }
-            .joinToString("; ").ifBlank { null }
+        is JsonArray -> detail.mapNotNull { item ->
+            val obj = item as? JsonObject ?: return@mapNotNull null
+            val msg = obj["msg"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
+            val field = (obj["loc"] as? JsonArray)?.lastOrNull()?.jsonPrimitive?.contentOrNull
+            if (field != null) "$field: $msg" else msg
+        }.joinToString("; ").ifBlank { null }
         else -> null
     }
 }.getOrNull()

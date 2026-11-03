@@ -18,7 +18,9 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -105,7 +107,11 @@ private fun SampleApp(vm: SampleViewModel) {
     when {
         !ui.loggedIn -> LoginScreen(vm, ui.busy)
         detail != null -> TripScreen(vm, ui, detail)
-        !BuildConfig.DEV_TOOLS -> LiveMapScreen(vm, ui, WindowInsets.safeDrawing.asPaddingValues(), sheetOverBottomInset = true)   // showcase only
+        // Showcase only. System bars + cutout, NOT safeDrawing: that one includes the keyboard, which the map's
+        // panel handles itself (counting it twice threw the focused field to the top of the screen).
+        !BuildConfig.DEV_TOOLS -> LiveMapScreen(
+            vm, ui, WindowInsets.systemBars.union(WindowInsets.displayCutout).asPaddingValues(), sheetOverBottomInset = true,
+        )
         else -> DevShell(vm, ui)
     }
 }
@@ -240,6 +246,55 @@ fun <T> ChipRow(options: List<Pair<String, T>>, selected: T, enabled: Boolean = 
         options.forEach { (label, value) ->
             FilterChip(selected = value == selected, onClick = { onSelect(value) }, label = { Text(label) }, enabled = enabled)
         }
+    }
+}
+
+/**
+ * Trip length: preset chips plus "Custom", any whole number of minutes. The keypad only offers digits, so nothing
+ * negative or fractional can be typed. The limits are the server's (the API spec says 5–1440 today): out-of-range
+ * values come back as a Validation error with the server's message, so this UI doesn't hard-code them.
+ * [minutes] is -1 while the field is empty.
+ */
+@Composable
+fun DurationPicker(presets: List<Pair<String, Int>>, minutes: Int, onChange: (Int) -> Unit) {
+    var custom by rememberSaveable { mutableStateOf(presets.none { it.second == minutes }) }
+    var text by rememberSaveable { mutableStateOf(if (custom && minutes >= 0) minutes.toString() else "") }
+    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        presets.forEach { (label, value) ->
+            FilterChip(selected = !custom && value == minutes, onClick = { custom = false; onChange(value) }, label = { Text(label) })
+        }
+        FilterChip(
+            selected = custom,
+            onClick = {
+                custom = true
+                if (text.isEmpty()) text = minutes.coerceAtLeast(0).toString()
+                onChange(text.toIntOrNull() ?: -1)
+            },
+            label = { Text("Custom") },
+        )
+    }
+    if (custom) {
+        OutlinedTextField(
+            text,
+            { typed -> text = typed.filter(Char::isDigit).take(5); onChange(text.toIntOrNull() ?: -1) },
+            label = { Text("Minutes") },
+            singleLine = true,
+            supportingText = { if (minutes >= 0) Text("= ${formatMinutes(minutes)}") },
+            // NumberPassword = a digits-only keypad (Number also shows "-", "." and ","); the text isn't hidden.
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+
+/** 90 → "1 h 30 min", 45 → "45 min", 1440 → "24 h". */
+fun formatMinutes(minutes: Int): String {
+    val h = minutes / 60
+    val m = minutes % 60
+    return when {
+        h == 0 -> "$m min"
+        m == 0 -> "$h h"
+        else -> "$h h $m min"
     }
 }
 

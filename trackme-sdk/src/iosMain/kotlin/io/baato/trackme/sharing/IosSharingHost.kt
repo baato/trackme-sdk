@@ -13,7 +13,8 @@ import platform.darwin.dispatch_get_main_queue
 
 /**
  * What the Live Activity / notification shows, flattened so Swift can read it without Kotlin sealed classes.
- * `lastSentAtMillis == 0` means nothing was sent yet.
+ * `lastSentAtMillis == 0` means nothing was sent yet. `tripStartedAtMillis` / `tripEndsAtMillis`: the time window of
+ * the shared trip that ends last (sharing lasts until then), for a countdown; 0 until known.
  */
 data class SharingSnapshot(
     val title: String,
@@ -29,6 +30,8 @@ data class SharingSnapshot(
     val pauseLabel: String,
     val resumeLabel: String,
     val stopLabel: String,
+    val tripStartedAtMillis: Long,
+    val tripEndsAtMillis: Long,
 )
 
 /**
@@ -95,8 +98,8 @@ internal object IosSharingHost {
 
     fun started(ui: TrackMeSharingUi) = onMain { it.sharingStarted(snapshot(ui, SharingState.Starting)) }
 
-    fun updated(ui: TrackMeSharingUi, state: SharingState) {
-        if (state.isActive) onMain { it.sharingUpdated(snapshot(ui, state)) }
+    fun updated(ui: TrackMeSharingUi, state: SharingState, window: SharingWindow?) {
+        if (state.isActive) onMain { it.sharingUpdated(snapshot(ui, state, window)) }
     }
 
     fun ended() = onMain { it.sharingEnded() }
@@ -106,7 +109,7 @@ internal object IosSharingHost {
         dispatch_async(dispatch_get_main_queue()) { runCatching { call(p) } }
     }
 
-    private fun snapshot(ui: TrackMeSharingUi, state: SharingState): SharingSnapshot {
+    private fun snapshot(ui: TrackMeSharingUi, state: SharingState, window: SharingWindow? = null): SharingSnapshot {
         val sharing = state as? SharingState.Sharing
         val paused = state is SharingState.Paused
         return SharingSnapshot(
@@ -123,6 +126,8 @@ internal object IosSharingHost {
             pauseLabel = ui.pauseLabel,
             resumeLabel = ui.resumeLabel,
             stopLabel = ui.stopLabel,
+            tripStartedAtMillis = window?.startedAtMillis ?: 0,
+            tripEndsAtMillis = window?.endsAtMillis ?: 0,
         )
     }
 }

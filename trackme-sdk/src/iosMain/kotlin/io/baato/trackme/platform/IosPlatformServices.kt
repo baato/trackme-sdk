@@ -10,6 +10,7 @@ import io.baato.trackme.location.LocationPermissionStatus
 import io.baato.trackme.location.LocationUpdate
 import io.baato.trackme.location.TrackMeLocation
 import io.baato.trackme.sharing.IosSharingHost
+import io.baato.trackme.sharing.SharingWindow
 import io.baato.trackme.sharing.SharingOptions
 import io.baato.trackme.sharing.SharingState
 import io.baato.trackme.sharing.TrackMeSharingUi
@@ -40,7 +41,10 @@ import platform.UIKit.UIApplication
 import platform.UIKit.UIApplicationState
 import platform.UIKit.UIDevice
 import platform.UIKit.UIDeviceBatteryState
+import platform.darwin.DISPATCH_QUEUE_PRIORITY_DEFAULT
 import platform.darwin.NSObject
+import platform.darwin.dispatch_async
+import platform.darwin.dispatch_get_global_queue
 import platform.darwin.dispatch_get_main_queue
 import platform.darwin.dispatch_sync
 
@@ -64,9 +68,29 @@ internal object IosPlatformServices : PlatformServices {
         return LocationPermissionStatus(
             level = level,
             precise = manager.accuracyAuthorization == CLAccuracyAuthorization.CLAccuracyAuthorizationFullAccuracy,
-            servicesEnabled = CLLocationManager.locationServicesEnabled(),
+            servicesEnabled = servicesEnabled(),
             backgroundCapable = hasBackgroundLocationMode,
         )
+    }
+
+    /**
+     * `CLLocationManager.locationServicesEnabled()` can block, and Apple warns against calling it on the main thread
+     * (where apps call permissionStatus()). There the last known value is returned and a fresh one is read in the
+     * background; iOS calls the app's `locationManagerDidChangeAuthorization` when it changes, so the app asks again.
+     */
+    @kotlin.concurrent.Volatile private var servicesOn = true
+
+    private fun servicesEnabled(): Boolean {
+        if (!NSThread.isMainThread) return CLLocationManager.locationServicesEnabled().also { servicesOn = it }
+        onBackground { servicesOn = CLLocationManager.locationServicesEnabled() }
+        return servicesOn
+    }
+
+    private fun onBackground(block: () -> Unit) =
+        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT.toLong(), 0u), block)
+
+    init {
+        onBackground { servicesOn = CLLocationManager.locationServicesEnabled() }   // warm it before the first call
     }
 
     /**
@@ -124,7 +148,8 @@ internal object IosPlatformServices : PlatformServices {
             when (manager.authorizationStatus) {
                 kCLAuthorizationStatusAuthorizedAlways, kCLAuthorizationStatusAuthorizedWhenInUse,
                 kCLAuthorizationStatusNotDetermined -> Unit
-                else -> if (!CLLocationManager.locationServicesEnabled()) onServicesOff() else onRevoked()
+                // Off the main thread: locationServicesEnabled() can block. Both callbacks only trySend.
+                else -> IosPlatformServices.onBackground { if (!CLLocationManager.locationServicesEnabled()) onServicesOff() else onRevoked() }
             }
         }
     }
@@ -171,7 +196,8 @@ internal object IosPlatformServices : PlatformServices {
         return TrackMeResult.Success(Unit)
     }
 
-    override fun updateSharingHost(ui: TrackMeSharingUi, state: SharingState) = IosSharingHost.updated(ui, state)
+    override fun updateSharingHost(ui: TrackMeSharingUi, state: SharingState, window: SharingWindow?) =
+        IosSharingHost.updated(ui, state, window)
 
     override fun stopSharingHost() = IosSharingHost.ended()
 

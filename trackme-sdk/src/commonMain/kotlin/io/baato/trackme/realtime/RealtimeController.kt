@@ -359,7 +359,15 @@ internal class RealtimeController(
         when (name) {
             "trip_position" -> decodeOrReport<PositionWire>(name, payload, report)?.let { emit(TrackMeEvent.TripPosition(it.toPublic())) }
             "share_position" -> decodeOrReport<PositionWire>(name, payload, report)?.let { emit(TrackMeEvent.SharePosition(it.toPublic())) }
-            "member_changed" -> decodeOrReport<MemberChangedWire>(name, payload, report)?.let { emit(TrackMeEvent.MemberChanged(it.toPublic())) }
+            "member_changed" -> decodeOrReport<MemberChangedWire>(name, payload, report)?.let { wire ->
+                // "sharing" / "paused" / "stopped" are sharing-state changes (proposed); anything else is membership.
+                val sharing = io.baato.trackme.model.MemberSharingState.fromWire(wire.change)
+                if (sharing != null) {
+                    emit(TrackMeEvent.MemberSharingChanged(wire.tripId, wire.userId, wire.displayName, sharing))
+                } else {
+                    emit(TrackMeEvent.MemberChanged(wire.toPublic()))
+                }
+            }
             "trip_ended" -> {
                 // Payload not documented yet: an empty / unknown one still means "the watched trip ended".
                 val wire = payload?.let { decodeOrReport<TripEndedWire>(name, it, report) }

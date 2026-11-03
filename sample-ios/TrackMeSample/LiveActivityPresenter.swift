@@ -31,15 +31,22 @@ final class LiveActivityPresenter: NSObject, TrackMeSharingPresenter {
             paused: s.paused,
             retrying: s.retrying,
             tripCount: Int(s.tripCount),
-            lastSentAt: s.lastSentAtMillis > 0 ? Date(timeIntervalSince1970: Double(s.lastSentAtMillis) / 1000) : nil,
+            lastSentAt: date(s.lastSentAtMillis),
             accentColorARGB: s.accentColor,
             symbolName: s.symbolName,
             showPauseAction: s.showPauseAction,
             showStopAction: s.showStopAction,
             pauseLabel: s.pauseLabel,
             resumeLabel: s.resumeLabel,
-            stopLabel: s.stopLabel
+            stopLabel: s.stopLabel,
+            tripStartedAt: date(s.tripStartedAtMillis),
+            tripEndsAt: date(s.tripEndsAtMillis)
         )
+    }
+
+    /// Epoch millis → Date; 0 = not known.
+    private static func date(_ millis: Int64) -> Date? {
+        millis > 0 ? Date(timeIntervalSince1970: Double(millis) / 1000) : nil
     }
 
     /// Call once at app start: registers the presenter and routes lock-screen buttons back into the SDK.

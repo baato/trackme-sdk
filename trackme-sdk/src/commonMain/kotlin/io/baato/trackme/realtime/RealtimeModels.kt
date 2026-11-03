@@ -37,7 +37,8 @@ data class MemberPosition(
     val fixAgeSeconds: Long?,
 )
 
-/** `member_changed`: someone joined the watched trip (socket server contract). */
+/** `member_changed`: someone joined the watched trip (socket server contract). Sharing-state values of `change`
+ * ("sharing" / "paused" / "stopped") arrive as [io.baato.trackme.TrackMeEvent.MemberSharingChanged] instead. */
 data class MemberChange(
     val tripId: Long,
     val userId: Long,

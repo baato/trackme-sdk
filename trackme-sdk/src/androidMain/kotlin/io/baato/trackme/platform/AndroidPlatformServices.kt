@@ -23,6 +23,7 @@ import io.baato.trackme.location.LocationPermissionStatus
 import io.baato.trackme.location.LocationUpdate
 import io.baato.trackme.location.TrackMeLocation
 import io.baato.trackme.sharing.SharingHostBridge
+import io.baato.trackme.sharing.SharingWindow
 import io.baato.trackme.sharing.SharingNotification
 import io.baato.trackme.sharing.SharingOptions
 import io.baato.trackme.sharing.SharingState
@@ -187,14 +188,16 @@ internal class AndroidPlatformServices(private val ctx: Context) : PlatformServi
         }
     }
 
-    override fun updateSharingHost(ui: TrackMeSharingUi, state: SharingState) {
+    override fun updateSharingHost(ui: TrackMeSharingUi, state: SharingState, window: SharingWindow?) {
         SharingHostBridge.ui = ui
         SharingHostBridge.state = state
-        if (state.isActive) SharingNotification.show(ctx, ui, state)
+        SharingHostBridge.window = window
+        if (state.isActive) SharingNotification.show(ctx, ui, state, window)
     }
 
     override fun stopSharingHost() {
         SharingHostBridge.state = SharingState.Idle
+        SharingHostBridge.window = null
         runCatching { ctx.stopService(Intent(ctx, TrackMeLocationService::class.java)) }
         SharingNotification.cancel(ctx)
     }
@@ -209,7 +212,7 @@ internal object UnavailablePlatformServices : PlatformServices {
     override fun isAppInForeground() = false
     override fun startSharingHost(ui: TrackMeSharingUi): TrackMeResult<Unit> =
         TrackMeResult.Failure(TrackMeError.BackgroundNotAllowed("No Android Context: call TrackMe.initialize(context, config)"))
-    override fun updateSharingHost(ui: TrackMeSharingUi, state: SharingState) = Unit
+    override fun updateSharingHost(ui: TrackMeSharingUi, state: SharingState, window: SharingWindow?) = Unit
     override fun stopSharingHost() = Unit
     override fun nowMillis(): Long = System.currentTimeMillis()
 }

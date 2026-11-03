@@ -102,10 +102,16 @@ final class SampleModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var watchingLive = false
     /// Latest live position per member of the open trip (TrackMe.realtime). Key = user id.
     @Published var livePositions: [Int64: MemberPosition] = [:]
+    /// When each of `livePositions` arrived: a position only says "live" while new ones keep coming.
+    @Published var livePositionAt: [Int64: Date] = [:]
+    /// Sharing state each member reported (TrackMeEvent.MemberSharingChanged, Kotlin enum name) and when it arrived.
+    @Published var memberSharing: [Int64: (state: String, at: Date)] = [:]
     @Published var history: String?
 
     // sharing
     @Published var permission: LocationPermissionStatus?
+    /// The map asked for location once this session (it asks by itself only once, so it never nags).
+    private var locationAutoAsked = false
     @Published var sharing: SharingState = SharingState.Idle.shared
     @Published var options = SharingOptions(intervalMillis: 5_000, minDistanceMeters: 5, heartbeatMillis: 30_000, highAccuracy: true)
 
@@ -185,7 +191,11 @@ final class SampleModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         case let e as TrackMeEvent.TripPosition:
             if let t = e.position.tripId?.int64Value, t != liveTripId { return }   // stale event from the previous trip
             livePositions[e.position.userId] = e.position
+            livePositionAt[e.position.userId] = Date()
             lastLivePositionAt = Date()
+        case let e as TrackMeEvent.MemberSharingChanged:
+            append("\(e.displayName ?? "Member \(e.userId)"): \(e.state.name.lowercased())")
+            if e.tripId == liveTripId { memberSharing[e.userId] = (e.state.name, Date()) }
         case let e as TrackMeEvent.MemberChanged:
             append("\(e.change.displayName ?? "Someone") \(e.change.change)")
             refreshTrip(); reloadMapTrip()
@@ -246,8 +256,8 @@ final class SampleModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     /// dispose(): stops sharing, ends the Live Activity, closes socket + HTTP. Safe to call twice.
     func logout() {
         TrackMe.shared.dispose()
-        session = nil; trips = []; created = nil; preview = nil; detail = nil; permission = nil
-        livePositions = [:]; viewerPositions = [:]; viewerWatching = false; notifications = []; health = nil
+        session = nil; trips = []; created = nil; preview = nil; detail = nil; permission = nil; locationAutoAsked = false
+        livePositions = [:]; livePositionAt = [:]; memberSharing = [:]; viewerPositions = [:]; viewerWatching = false; notifications = []; health = nil
         mapDetail = nil; mapLiveTrips = []; mapViewLink = nil; invite = nil; mapSharingError = nil; liveTripId = nil
         append("Disposed")
     }
@@ -268,6 +278,34 @@ final class SampleModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
     func requestAlways() { locationManager.requestAlwaysAuthorization() }
 
+    var locationGranted: Bool { permission?.isGranted == true }
+    /// iOS shows the location prompt only while the level is "not determined"; after that only Settings can change it.
+    var locationCanAsk: Bool { permission?.level.isNotDetermined == true }
+
+    /// The live map's one way to ask: the system prompt while iOS still shows it, otherwise Settings.
+    func askLocation() {
+        if locationCanAsk { requestWhenInUse() } else { openSettings() }
+    }
+
+    /// "Always": iOS offers the upgrade prompt once per install; after that it's a Settings switch.
+    func askLocationAlways() {
+        let key = "trackme.sample.askedAlways"
+        if UserDefaults.standard.bool(forKey: key) {
+            openSettings()
+        } else {
+            UserDefaults.standard.set(true, forKey: key)
+            requestAlways()
+        }
+    }
+
+    /// Called when the map appears: asks once, by itself, if location was never decided.
+    func autoAskLocationIfNeeded() {
+        refreshPermission()
+        guard !locationAutoAsked, locationCanAsk, permission?.servicesEnabled == true else { return }
+        locationAutoAsked = true
+        requestWhenInUse()
+    }
+
     func openSettings() {
         if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
     }
@@ -275,8 +313,9 @@ final class SampleModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         Task { @MainActor in
             self.refreshPermission()
-            // "Allow location" from the live map: start sharing as soon as it's granted.
-            if self.pendingMapShare, self.permission?.isGranted == true {
+            // "Allow location" from the live map (or sharing failed for lack of it): start sharing once granted.
+            let failedForPermission = self.mapSharingError is TrackMeError.LocationPermissionDenied
+            if self.pendingMapShare || failedForPermission, self.permission?.isGranted == true {
                 self.pendingMapShare = false
                 self.startSharingFromMap()
             }
@@ -343,7 +382,7 @@ final class SampleModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     func closeTrip() {
         guard detail != nil else { return }
         _ = TrackMe.shared.realtime.stopWatchingTrip()
-        detail = nil; watchingLive = false; liveTripId = nil; livePositions = [:]; history = nil; viewLink = nil
+        detail = nil; watchingLive = false; liveTripId = nil; livePositions = [:]; livePositionAt = [:]; memberSharing = [:]; history = nil; viewLink = nil
     }
 
     func setWatchLive(_ on: Bool) {
@@ -358,7 +397,7 @@ final class SampleModel: NSObject, ObservableObject, CLLocationManagerDelegate {
 
     /// One socket watches one trip; switching trips clears the positions of the previous one.
     private func watchLive(_ tripId: Int64, onResult: @escaping (Bool) -> Void = { _ in }) {
-        if liveTripId != tripId { liveTripId = tripId; livePositions = [:] }
+        if liveTripId != tripId { liveTripId = tripId; livePositions = [:]; livePositionAt = [:]; memberSharing = [:] }
         Task {
             do {
                 _ = try unwrap(try await TrackMe.shared.realtime.watchTrip(tripId: tripId))   // waits for the server's OK
@@ -643,6 +682,8 @@ final class SampleModel: NSObject, ObservableObject, CLLocationManagerDelegate {
             _ = try unwrap(try await TrackMe.shared.trips.removeMember(tripId: id, userId: userId))
             self.append("Removed user \(userId)")
             self.livePositions[userId] = nil
+            self.livePositionAt[userId] = nil
+            self.memberSharing[userId] = nil
             await self.loadMapTrip(id)
         }
     }
@@ -728,6 +769,53 @@ final class SampleModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     /// The map's "Allow location" button: ask (sharing starts once granted), or open Settings if denied for good.
     func mapAllowLocation(canAskAgain: Bool) {
         if canAskAgain { pendingMapShare = true; requestWhenInUse() } else { openSettings() }
+    }
+
+    // MARK: live status
+
+    /// How long a member still counts as "live" after their newest position. Sharing re-sends at least every heartbeat
+    /// (30 s by default) even when standing still, so a longer silence means paused, stopped, offline or no GPS.
+    /// The server doesn't announce a pause: silence is the only signal, for every member.
+    static let liveWindowSeconds: Int64 = 45
+
+    /// Seconds since `userId`'s newest live (socket) position for `tripId`, or nil if none arrived.
+    func liveAgeSeconds(_ userId: Int64, tripId: Int64, now: Date) -> Int64? {
+        guard liveTripId == tripId, let p = livePositions[userId], let at = livePositionAt[userId] else { return nil }
+        return Int64(now.timeIntervalSince(at)) + (p.fixAgeSeconds?.int64Value ?? 0)
+    }
+
+    /// Seconds since `m`'s fix in a trips.detail() snapshot loaded at `loadedAt`, or nil without a position.
+    func snapshotAgeSeconds(_ m: TripMember, loadedAt: Date, now: Date) -> Int64? {
+        guard m.hasPosition else { return nil }
+        return (m.fixAgeSeconds?.int64Value ?? 0) + Int64(now.timeIntervalSince(loadedAt))
+    }
+
+    /// The member's newest reported sharing state ("Sharing" / "Paused" / "Stopped", the Kotlin enum name) and when
+    /// it was known: the socket event or the snapshot loaded at `loadedAt`, whichever is newer.
+    /// Nil until the backend supports `sharing_state`.
+    func reportedSharing(_ m: TripMember, tripId: Int64, loadedAt: Date) -> (state: String, at: Date)? {
+        let event = liveTripId == tripId ? memberSharing[m.userId] : nil
+        let snapshot = m.sharingState.map { (state: $0.name, at: loadedAt) }
+        return [event, snapshot].compactMap { $0 }.max { $0.at < $1.at }
+    }
+
+    /// "paused" / "not sharing" when the member said so (and no position arrived since), otherwise "live",
+    /// "2 min 5 s ago" or "no location" from whichever is newer: the live position or the snapshot.
+    func memberStatus(_ m: TripMember, tripId: Int64, loadedAt: Date, now: Date) -> String {
+        if let reported = reportedSharing(m, tripId: tripId, loadedAt: loadedAt), reported.state != "Sharing" {
+            let liveAt = liveTripId == tripId ? livePositionAt[m.userId] : nil
+            if liveAt == nil || liveAt! <= reported.at { return reported.state == "Paused" ? "paused" : "not sharing" }
+        }
+        let ages = [liveAgeSeconds(m.userId, tripId: tripId, now: now), snapshotAgeSeconds(m, loadedAt: loadedAt, now: now)]
+        guard let age = ages.compactMap({ $0 }).min() else { return "no location" }
+        return age <= Self.liveWindowSeconds ? "live" : "\(formatSeconds(age)) ago"
+    }
+
+    /// The live position, unless the snapshot is newer (e.g. the socket missed some while the poll caught up).
+    func newestLive(_ m: TripMember, tripId: Int64, loadedAt: Date, now: Date) -> MemberPosition? {
+        guard let live = liveAgeSeconds(m.userId, tripId: tripId, now: now) else { return nil }
+        if let snap = snapshotAgeSeconds(m, loadedAt: loadedAt, now: now), snap < live { return nil }
+        return livePositions[m.userId]
     }
 
     // MARK: helpers

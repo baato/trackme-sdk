@@ -69,7 +69,7 @@ sealed class TrackMeError {
     Forbidden(message)                // 403, e.g. not the trip owner
     NotFound(message)                 // 404
     Conflict(message)                 // 409, e.g. delete a live trip
-    Validation(message)               // 422 from the server, or caught client-side (duration 5–1440, code 1–16 chars)
+    Validation(message)               // 400/422 from the server ("duration_min: Input should be …"), or caught client-side (code 1–16 chars)
     Network(message)                  // offline, DNS, timeout
     Server(statusCode, message)       // 5xx
     LocationPermissionDenied(canAskAgain)

@@ -17,9 +17,21 @@ import androidx.core.content.ContextCompat
 internal object SharingHostBridge {
     @Volatile var ui: TrackMeSharingUi = TrackMeSharingUi()
     @Volatile var state: SharingState = SharingState.Idle
+    @Volatile var window: SharingWindow? = null
 }
 
-/** Builds the ongoing "sharing location" notification with Pause/Resume and Stop actions. */
+/**
+ * Builds the ongoing "sharing location" notification:
+ * ```
+ * (pin) TrackMe · 42:17 ⏱                    ← counts down to the trip's end by itself (chronometer)
+ * Sharing your location
+ * Members of your trip can see where you are.
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━──────────   ← time left in the trip
+ * Live · 1 trip · ends 17:45
+ * [Pause]  [Stop]
+ * ```
+ * Before the trip's end time is known (the first seconds), it shows "Updated … ago" instead of the countdown.
+ */
 internal object SharingNotification {
     const val CHANNEL_ID = "trackme_location_sharing"
     const val NOTIFICATION_ID = 0x7EAC
@@ -32,9 +44,11 @@ internal object SharingNotification {
         runCatching { NotificationManagerCompat.from(ctx).createNotificationChannel(channel) }
     }
 
-    fun build(ctx: Context, ui: TrackMeSharingUi, state: SharingState): Notification {
+    fun build(ctx: Context, ui: TrackMeSharingUi, state: SharingState, window: SharingWindow?): Notification {
         val paused = state is SharingState.Paused
         val sharing = state as? SharingState.Sharing
+        val now = System.currentTimeMillis()
+        val countdown = window?.takeIf { it.endsAtMillis > now }
 
         val builder = NotificationCompat.Builder(ctx, CHANNEL_ID)
             .setSmallIcon(if (ui.androidSmallIcon != 0) ui.androidSmallIcon else android.R.drawable.ic_menu_mylocation)
@@ -50,8 +64,16 @@ internal object SharingNotification {
 
         if (ui.accentColor != 0L) builder.setColor(ui.accentColor.toInt())
 
-        // "Updated 2 min ago" for free: Android renders the relative time of `when`.
-        sharing?.lastSentAtMillis?.let { builder.setWhen(it).setShowWhen(true) } ?: builder.setShowWhen(false)
+        if (countdown != null) {
+            // Android ticks a count-down chronometer by itself: no re-posting every second.
+            builder.setWhen(countdown.endsAtMillis).setShowWhen(true).setUsesChronometer(true).setChronometerCountDown(true)
+            val left = 1.0 - countdown.elapsedFraction(now)
+            builder.setProgress(PROGRESS_MAX, (left * PROGRESS_MAX).toInt().coerceIn(0, PROGRESS_MAX), false)
+        } else {
+            // "Updated 2 min ago" for free: Android renders the relative time of `when`.
+            sharing?.lastSentAtMillis?.let { builder.setWhen(it).setShowWhen(true) } ?: builder.setShowWhen(false)
+        }
+        builder.setSubText(statusLine(state, countdown, ctx))
 
         launchIntent(ctx)?.let { builder.setContentIntent(it) }
 
@@ -68,11 +90,27 @@ internal object SharingNotification {
         return builder.build()
     }
 
+    /** "Live · 1 trip · ends 17:45" / "Paused" / "Offline · retrying". */
+    private fun statusLine(state: SharingState, window: SharingWindow?, ctx: Context): String {
+        val sharing = state as? SharingState.Sharing
+        val status = when {
+            state is SharingState.Paused -> "Paused"
+            sharing?.retrying == true -> "Offline · retrying"
+            sharing != null && sharing.tripIds.isNotEmpty() -> "Live"
+            else -> "Starting"
+        }
+        val trips = sharing?.tripIds?.size?.takeIf { it > 0 }?.let { if (it == 1) "1 trip" else "$it trips" }
+        val ends = window?.let { "ends " + android.text.format.DateFormat.getTimeFormat(ctx).format(java.util.Date(it.endsAtMillis)) }
+        return listOfNotNull(status, trips, ends).joinToString(" · ")
+    }
+
+    private const val PROGRESS_MAX = 1_000
+
     /** Re-post with the new state. Silently skipped if the user blocked notifications (sharing still runs). */
     @SuppressLint("MissingPermission")   // checked by canPost()
-    fun show(ctx: Context, ui: TrackMeSharingUi, state: SharingState) {
+    fun show(ctx: Context, ui: TrackMeSharingUi, state: SharingState, window: SharingWindow?) {
         if (!canPost(ctx)) return
-        runCatching { NotificationManagerCompat.from(ctx).notify(NOTIFICATION_ID, build(ctx, ui, state)) }
+        runCatching { NotificationManagerCompat.from(ctx).notify(NOTIFICATION_ID, build(ctx, ui, state, window)) }
     }
 
     fun cancel(ctx: Context) {

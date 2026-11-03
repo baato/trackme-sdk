@@ -70,8 +70,8 @@ fun TripsTab(vm: SampleViewModel, ui: SampleUiState) {
             SectionCard("Create a trip  · trips.create") {
                 OutlinedTextField(name, { name = it }, label = { Text("Name (optional)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 Text("Duration: the trip ends by itself after this")
-                ChipRow(durations, minutes) { minutes = it }
-                Button(onClick = { vm.createTrip(name, minutes) }) { Text("Create") }
+                DurationPicker(durations, minutes) { minutes = it }
+                Button(onClick = { vm.createTrip(name, minutes) }, enabled = minutes >= 0) { Text("Create") }
                 ui.created?.let { c ->
                     HorizontalDivider()
                     Text("Join code: ${c.joinCode}", style = MaterialTheme.typography.headlineSmall)
@@ -250,13 +250,15 @@ private fun MembersCard(ui: SampleUiState, d: TripDetail, onRemove: (TripMember)
                 Column(Modifier.weight(1f)) {
                     Text("${m.fullName ?: "User ${m.userId}"}${if (isMe) " (you)" else ""}", fontWeight = FontWeight.SemiBold)
                     Caption("${m.role} · id ${m.userId}")
-                    // A live socket position (if one arrived) beats the snapshot from trips.detail().
-                    val live = ui.livePositions[m.userId]
+                    // The newer of the live socket position and the snapshot; "live" only while positions keep coming.
+                    val now = System.currentTimeMillis()
+                    val live = ui.newestLive(m, d.trip.id, ui.detailLoadedAt, now)
+                    val status = ui.memberStatus(m, d.trip.id, ui.detailLoadedAt, now)
                     Text(
                         when {
-                            live != null -> "%.5f, %.5f · live".format(live.latitude, live.longitude) +
+                            live != null -> "%.5f, %.5f · %s".format(live.latitude, live.longitude, status) +
                                 (live.speedMetersPerSecond?.let { " · %.1f m/s".format(it) } ?: "")
-                            m.hasPosition -> "%.5f, %.5f · %s ago".format(m.lat, m.lon, formatSeconds(m.fixAgeSeconds ?: 0))
+                            m.hasPosition -> "%.5f, %.5f · %s".format(m.lat, m.lon, status)
                             else -> "no position yet"
                         },
                         style = MaterialTheme.typography.bodySmall,

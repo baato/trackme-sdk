@@ -42,7 +42,7 @@ class TrackMeLocationService : Service() {
     }
 
     private fun promoteToForeground(): Boolean = try {
-        val notification = SharingNotification.build(this, SharingHostBridge.ui, SharingHostBridge.state)
+        val notification = SharingNotification.build(this, SharingHostBridge.ui, SharingHostBridge.state, SharingHostBridge.window)
         val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION else 0
         ServiceCompat.startForeground(this, SharingNotification.NOTIFICATION_ID, notification, type)
         true

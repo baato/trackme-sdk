@@ -33,6 +33,8 @@ public struct TrackMeLiveActivityWidget: Widget {
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     VStack(alignment: .leading, spacing: 10) {
+                        TrackMeSubtitle(content: c)
+                        TrackMeTripBar(content: c)
                         TrackMeMetaLine(content: c)
                         TrackMeActionButtons(content: c)
                     }
@@ -41,7 +43,16 @@ public struct TrackMeLiveActivityWidget: Widget {
             } compactLeading: {
                 Image(systemName: c.symbolName).foregroundColor(c.paused ? .secondary : c.accentColor)
             } compactTrailing: {
-                Text(c.statusLabel).font(.caption2.weight(.semibold)).foregroundColor(c.statusColor)
+                // Time left while the trip's end is known (iOS ticks it by itself), else the status word.
+                if let range = c.tripInterval, range.upperBound > Date() {
+                    Text(timerInterval: range, countsDown: true)
+                        .font(.caption2.weight(.semibold).monospacedDigit())
+                        .multilineTextAlignment(.trailing)
+                        .frame(maxWidth: 52)
+                        .foregroundColor(c.statusColor)
+                } else {
+                    Text(c.statusLabel).font(.caption2.weight(.semibold)).foregroundColor(c.statusColor)
+                }
             } minimal: {
                 Image(systemName: c.symbolName).foregroundColor(c.paused ? .secondary : c.accentColor)
             }
@@ -50,11 +61,12 @@ public struct TrackMeLiveActivityWidget: Widget {
     }
 }
 
-/// Lock screen / banner:
+/// Lock screen / banner. iOS gives it at most ~160 pt of height and clips the rest, so it stays compact:
 /// ```
-/// (icon)  Sharing your location            ● LIVE
-///         Trip members can see where you are.
-///         1 trip · Updated 12 sec ago
+/// (icon)  Sharing your location             ● LIVE
+///         38:56 left · ends 16:43              ← or the text, until the trip's end is known
+/// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━────────────     ← drains as the trip runs out
+/// 1 trip · Updated 8 sec ago
 /// [   Pause   ]  [   Stop   ]
 /// ```
 @available(iOS 16.1, *)
@@ -62,10 +74,10 @@ struct TrackMeLockScreenView: View {
     let content: TrackMeActivityContent
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top, spacing: 12) {
-                TrackMeIconBadge(content: content, size: 40)
-                VStack(alignment: .leading, spacing: 3) {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .center, spacing: 12) {
+                TrackMeIconBadge(content: content, size: 38)
+                VStack(alignment: .leading, spacing: 2) {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         Text(content.title)
                             .font(.headline)
@@ -75,18 +87,15 @@ struct TrackMeLockScreenView: View {
                         Spacer(minLength: 4)
                         TrackMeStatusPill(content: content)
                     }
-                    Text(content.paused ? "Location sharing is paused." : content.text)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
-                    TrackMeMetaLine(content: content)
-                        .padding(.top, 1)
+                    TrackMeSubtitle(content: content)
                 }
             }
+            TrackMeTripBar(content: content)
+            TrackMeMetaLine(content: content)
             TrackMeActionButtons(content: content)
         }
-        .padding(16)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
     }
 }
 
@@ -103,6 +112,46 @@ struct TrackMeIconBadge: View {
             .foregroundColor(tint)
             .frame(width: size, height: size)
             .background(Circle().fill(tint.opacity(0.18)))
+    }
+}
+
+/// "38:56 left · ends 16:43" while the trip's end is known (iOS ticks the timer by itself), else the text.
+@available(iOS 16.1, *)
+struct TrackMeSubtitle: View {
+    let content: TrackMeActivityContent
+
+    var body: some View {
+        if let range = content.tripInterval, range.upperBound > Date() {
+            (Text(timerInterval: range, countsDown: true).bold().foregroundColor(.primary)
+                + Text(" left · ends ") + Text(range.upperBound, style: .time))
+                .font(.subheadline.monospacedDigit())
+                .foregroundColor(.secondary)
+                .lineLimit(1)
+        } else {
+            Text(content.paused ? "Location sharing is paused." : content.text)
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .lineLimit(1)
+        }
+    }
+}
+
+/// Time left as a bar that drains as the trip runs out. Animated by iOS itself (`ProgressView(timerInterval:)`).
+/// Nothing until the trip's end is known.
+@available(iOS 16.1, *)
+struct TrackMeTripBar: View {
+    let content: TrackMeActivityContent
+
+    var body: some View {
+        if let range = content.tripInterval {
+            ProgressView(timerInterval: range, countsDown: true) {
+                EmptyView()
+            } currentValueLabel: {
+                EmptyView()
+            }
+            .progressViewStyle(.linear)
+            .tint(content.paused ? .gray : content.accentColor)
+        }
     }
 }
 
@@ -181,7 +230,7 @@ struct TrackMeActionButtons: View {
                 }
             }
             .buttonStyle(.bordered)
-            .controlSize(.regular)
+            .controlSize(.small)
             .font(.subheadline.weight(.semibold))
     }
 }

@@ -48,6 +48,19 @@ data class TrackMeSharingUi(
     constructor(title: String, text: String, accentColor: Long) : this(title = title, text = text, pausedText = "Location sharing is paused.", accentColor = accentColor)
 }
 
+/**
+ * When the shared trips run, for the notification / Live Activity countdown: from the start to the end of the
+ * trip that ends **last** (sharing lasts until then). Epoch milliseconds, on this device's clock.
+ */
+internal data class SharingWindow(val startedAtMillis: Long, val endsAtMillis: Long) {
+    /** Share of the trip already over, 0…1. */
+    fun elapsedFraction(nowMillis: Long): Double {
+        val total = endsAtMillis - startedAtMillis
+        if (total <= 0) return 1.0
+        return ((nowMillis - startedAtMillis).toDouble() / total).coerceIn(0.0, 1.0)
+    }
+}
+
 /** Why sharing ended. Observe it via [SharingState.Stopped]. */
 enum class StopReason {
     /** The app called stop(). */

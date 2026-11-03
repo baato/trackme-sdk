@@ -48,6 +48,25 @@ data class TripPreview(
     @SerialName("expires_at") val expiresAt: String,
 )
 
+/**
+ * Whether a member is sending their location, as they reported it (`sharing.start / pause / resume / stop`).
+ * Arrives as [io.baato.trackme.TrackMeEvent.MemberSharingChanged] and in [TripMember.sharingState].
+ *
+ * **Needs the backend's `sharing_state` support** (docs/trackme-api.md → Proposed: sharing state). Until the
+ * server sends it, it's always null: fall back to how old the member's last position is.
+ */
+enum class MemberSharingState {
+    Sharing, Paused, Stopped;
+
+    /** The wire value: "sharing", "paused", "stopped". */
+    val wireName: String get() = name.lowercase()
+
+    companion object {
+        /** null for anything else (an older or newer server value): treat it as unknown. */
+        fun fromWire(value: String?): MemberSharingState? = entries.firstOrNull { it.wireName == value }
+    }
+}
+
 /** `TripDetailMember`. Position fields are null until the member has sent a fix. */
 @Serializable
 data class TripMember(
@@ -58,9 +77,13 @@ data class TripMember(
     val lon: Double? = null,
     val speed: Double? = null,
     @SerialName("fix_age_s") val fixAgeSeconds: Long? = null,
+    /** Raw `sharing_state` (proposed field). Use [sharingState]. */
+    @SerialName("sharing_state") val sharingStateValue: String? = null,
 ) {
     val isOwner: Boolean get() = role == "owner"
     val hasPosition: Boolean get() = lat != null && lon != null
+    /** Sharing, paused or stopped, as last reported by the member. Null until the server supports it. */
+    val sharingState: MemberSharingState? get() = MemberSharingState.fromWire(sharingStateValue)
 }
 
 /** `TripDetailResponse` */
@@ -78,6 +101,10 @@ data class ViewLink(@SerialName("view_link") val viewLink: String)
 
 @Serializable
 internal data class TripListResponse(val trips: List<Trip>)
+
+/** Body of `POST /v1/ingest/state` (proposed). */
+@Serializable
+internal data class SharingStateRequest(val state: String)
 
 @Serializable
 internal data class CreateTripRequest(

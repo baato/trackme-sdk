@@ -165,6 +165,28 @@ class RealtimeTest {
         }
     }
 
+    /** Proposed sharing-state values of member_changed arrive as their own typed event; joins stay MemberChanged. */
+    @Test fun sharingStateChangesAreTyped() = runTest {
+        val server = FakeSocketServer()
+        start(server)
+        realTime {
+            val conn = watching(server)
+            coroutineScope {
+                val sharing = async(start = CoroutineStart.UNDISPATCHED) {
+                    TrackMe.events.filterIsInstance<TrackMeEvent.MemberSharingChanged>().first()
+                }
+                val joined = async(start = CoroutineStart.UNDISPATCHED) {
+                    TrackMe.events.filterIsInstance<TrackMeEvent.MemberChanged>().first()
+                }
+                conn.push("""42["member_changed",{"trip_id":17,"user_id":9,"display_name":"Sita","change":"paused"}]""")
+                conn.push("""42["member_changed",{"trip_id":17,"user_id":10,"display_name":"Hari","change":"joined"}]""")
+                val s = sharing.await()
+                assertEquals(9L, s.userId); assertEquals(io.baato.trackme.model.MemberSharingState.Paused, s.state)
+                assertEquals(10L, joined.await().change.userId, "the paused event must not arrive as MemberChanged")
+            }
+        }
+    }
+
     /** A payload outside the contract is not guessed at: no event, and the debug logger says why. */
     @Test fun offContractPositionIsDroppedAndReported() = runTest {
         val server = FakeSocketServer()

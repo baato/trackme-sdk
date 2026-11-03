@@ -54,7 +54,8 @@ public final class TrackMeActivityController {
         current = content
         // Push state changes immediately, otherwise at most every `minimumUpdateInterval`.
         let important = previous.paused != content.paused || previous.retrying != content.retrying ||
-            previous.tripCount != content.tripCount || previous.title != content.title || previous.text != content.text
+            previous.tripCount != content.tripCount || previous.title != content.title || previous.text != content.text ||
+            previous.tripEndsAt != content.tripEndsAt
         guard important || Date().timeIntervalSince(lastPushed) >= minimumUpdateInterval else { return }
 
         #if canImport(ActivityKit)

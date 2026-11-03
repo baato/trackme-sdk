@@ -20,6 +20,9 @@ public struct TrackMeActivityContent: Codable, Hashable, Sendable {
     public var pauseLabel: String
     public var resumeLabel: String
     public var stopLabel: String
+    /// When the shared trip started and ends (the one that ends last). nil = not known yet: no countdown.
+    public var tripStartedAt: Date?
+    public var tripEndsAt: Date?
 
     public init(
         title: String,
@@ -34,7 +37,9 @@ public struct TrackMeActivityContent: Codable, Hashable, Sendable {
         showStopAction: Bool = true,
         pauseLabel: String = "Pause",
         resumeLabel: String = "Resume",
-        stopLabel: String = "Stop"
+        stopLabel: String = "Stop",
+        tripStartedAt: Date? = nil,
+        tripEndsAt: Date? = nil
     ) {
         self.title = title
         self.text = text
@@ -49,6 +54,14 @@ public struct TrackMeActivityContent: Codable, Hashable, Sendable {
         self.pauseLabel = pauseLabel
         self.resumeLabel = resumeLabel
         self.stopLabel = stopLabel
+        self.tripStartedAt = tripStartedAt
+        self.tripEndsAt = tripEndsAt
+    }
+
+    /// The trip's time span for the countdown bar, or nil when unknown or invalid.
+    public var tripInterval: ClosedRange<Date>? {
+        guard let start = tripStartedAt, let end = tripEndsAt, end > start else { return nil }
+        return start...end
     }
 
     /// The accent as a SwiftUI color (falls back to the system accent for 0).
@@ -78,9 +91,10 @@ public struct TrackMeActivityContent: Codable, Hashable, Sendable {
         return tripCount == 1 ? "1 trip" : "\(tripCount) trips"
     }
 
-    /// One short line for the iOS 15 notification fallback: "Live · 1 trip".
+    /// One short line for the iOS 15 notification fallback: "Live · 1 trip · ends 17:45".
     public var statusLine: String {
-        [statusLabel, tripLine].compactMap { $0 }.joined(separator: " · ")
+        let ends = tripEndsAt.map { "ends " + DateFormatter.localizedString(from: $0, dateStyle: .none, timeStyle: .short) }
+        return [statusLabel, tripLine, ends].compactMap { $0 }.joined(separator: " · ")
     }
 }
 

@@ -8,6 +8,7 @@ import io.baato.trackme.location.TrackMeLocation
 import io.baato.trackme.platform.PlatformServices
 import io.baato.trackme.sharing.SharingOptions
 import io.baato.trackme.sharing.SharingState
+import io.baato.trackme.sharing.SharingWindow
 import io.baato.trackme.sharing.TrackMeSharingUi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -30,7 +31,10 @@ internal class FakePlatform(
     override fun battery() = BatteryInfo(80, false)
     override fun isAppInForeground() = foreground
     override fun startSharingHost(ui: TrackMeSharingUi): TrackMeResult<Unit> { hostStarted++; return hostResult }
-    override fun updateSharingHost(ui: TrackMeSharingUi, state: SharingState) = Unit
+    @kotlin.concurrent.Volatile var lastWindow: SharingWindow? = null
+    override fun updateSharingHost(ui: TrackMeSharingUi, state: SharingState, window: SharingWindow?) {
+        if (window != null) lastWindow = window
+    }
     override fun stopSharingHost() { hostStopped++ }
     private val started = TimeSource.Monotonic.markNow()
     override fun nowMillis(): Long = 1_761_600_000_000 + started.elapsedNow().inWholeMilliseconds

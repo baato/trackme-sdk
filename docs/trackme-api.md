@@ -401,6 +401,39 @@ The SDK decodes each payload with the fields below; extra fields are ignored. A 
 | `trip_ended` | `trip_id`, `reason` (both optional) | **to be documented by backend** (the event exists; its payload isn't specified yet) |
 | `share_ended` | none needed | socket server |
 
+### Proposed: sharing state (pause shows at once on other phones)
+
+**Status: proposed to the backend; the SDK already implements its side.** Today a paused phone just stops uploading, so others can only notice the silence: "live" turns into "N s ago" after about 45 s. With this change a pause, resume or stop shows on every member's phone at once.
+
+What the backend adds. It's three small things, and all of them are additive, so nothing existing changes:
+
+1. **`POST /api/v1/ingest/state`**: same auth as `/ingest/live`.
+   ```json
+   { "state": "sharing" }          // "sharing" | "paused" | "stopped"
+   ```
+   Response `200` (any body; the SDK ignores it). The server stores the value per user, next to their last position. An unknown `state` gets `422`.
+2. **Broadcast:** for each live trip the user is a member of, emit the existing **`member_changed`** event to its room with `change` set to the new state:
+   ```json
+   { "trip_id": 17, "user_id": 9, "display_name": "Sita", "change": "paused" }
+   ```
+   Only when the stored value changes. `"joined"` (and any other existing values) keep their meaning.
+3. **`TripDetailMember.sharing_state`**: `"sharing" | "paused" | "stopped" | null` in `GET /api/v1/trips/{id}`, so an app that opens later, or reconnects, sees it too. Socket events aren't replayed. `null` = never reported.
+
+Optional, in the same spirit: treat a successful `/ingest/live` as `"sharing"` if the stored value was something else, and set `"stopped"` when a user's last live trip ends.
+
+What the SDK does now:
+
+| SDK call | Sends |
+|---|---|
+| `sharing.start()` | `{"state":"sharing"}` |
+| `sharing.pause()` | `{"state":"paused"}` |
+| `sharing.resume()` | `{"state":"sharing"}` |
+| `sharing.stop()`, permission revoked, location off, background refused | `{"state":"stopped"}` (not after `NoActiveTrips` or `Unauthorized`; `dispose()` sends it best-effort) |
+
+- Only the newest state is sent, in order, so a quick pause → resume can't arrive reversed. It's fire-and-forget: a failure, including today's `404`, changes nothing about sharing.
+- Receiving: `member_changed` with `change` = `sharing` / `paused` / `stopped` → `TrackMeEvent.MemberSharingChanged(tripId, userId, displayName, state)`; any other `change` → `MemberChanged` as before. `TripMember.sharingState` reads the new field (null today).
+- The samples show **paused** / **not sharing** on the member chip at once, unless a position arrived after that report. Without the backend support they fall back to the 45-second rule.
+
 ### Not part of the SDK
 
 - **View tokens:** the API returns the public link as a URL (`view_link`), but `join_share` needs the token. The SDK's `watchShare(viewToken)` takes the token, and an app that only has the link takes it out itself. Proposal for the backend: include `view_token` in the view-link and create-trip responses.

@@ -2,10 +2,6 @@
 
 package io.baato.trackme.sample
 
-import android.Manifest
-import android.os.Build
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
@@ -29,7 +25,10 @@ import androidx.compose.material3.SheetValue
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.material3.rememberStandardBottomSheetState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.ime
+import androidx.compose.ui.unit.Dp
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -37,7 +36,6 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -96,6 +94,19 @@ fun LiveMapScreen(vm: SampleViewModel, ui: SampleUiState, contentPadding: Paddin
 
     LaunchedEffect(Unit) { vm.refreshPermission(); vm.mapRefresh() }   // every time the map appears
 
+    // Location: asked once by itself when the map first shows without it; after that only when the user taps
+    // the locate button, "Allow location", or the location pill. Never nags.
+    val access = rememberLocationAccess(vm, ui)
+    var showLocationDialog by remember { mutableStateOf(false) }
+    LaunchedEffect(ui.permission) {
+        val p = ui.permission ?: return@LaunchedEffect
+        if (!p.isGranted && p.servicesEnabled && !ui.locationAutoAsked && !ui.locationBlocked) {
+            vm.markLocationAutoAsked()
+            access.ask()
+        }
+    }
+    if (showLocationDialog) LocationDialog(access) { showLocationDialog = false }
+
     // Fallback next to the socket: while no live position arrives, refresh the trip snapshot every 5 s.
     val shownTrip = ui.mapDetail?.trip?.takeIf { it.isLive }?.id
     LaunchedEffect(shownTrip) {
@@ -153,7 +164,7 @@ fun LiveMapScreen(vm: SampleViewModel, ui: SampleUiState, contentPadding: Paddin
         sheetShadowElevation = 12.dp,
         sheetDragHandle = { BottomSheetDefaults.DragHandle() },
         sheetContent = {
-            PanelContent(vm, ui, Modifier.padding(bottom = if (sheetOverBottomInset) bottomInset else 0.dp), onMemberTap = focusOn)
+            PanelContent(vm, ui, access, Modifier.padding(bottom = panelBottomPadding(bottomInset, sheetOverBottomInset)), onMemberTap = focusOn)
         },
     ) { _ ->
     Box(Modifier.fillMaxSize().onSizeChanged { containerHeight = it.height }) {
@@ -173,18 +184,35 @@ fun LiveMapScreen(vm: SampleViewModel, ui: SampleUiState, contentPadding: Paddin
             }
         }
 
-        // Top: live status + log out / recenter.
+        // Top: live status + location access, log out / recenter.
         Row(
             Modifier.fillMaxWidth().padding(top = contentPadding.calculateTopPadding()).padding(12.dp),
             verticalAlignment = Alignment.Top,
         ) {
-            if (ui.mapDetail?.trip?.isLive == true || ui.invite != null) LivePill(realtime, watchingInvite = ui.invite != null)
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (ui.mapDetail?.trip?.isLive == true || ui.invite != null) LivePill(realtime, watchingInvite = ui.invite != null)
+                LocationPill(access) { showLocationDialog = true }
+            }
             Spacer(Modifier.weight(1f))
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Surface(shape = RoundedCornerShape(50), shadowElevation = 4.dp) {
                     TextButton(onClick = vm::logout) { Text("Log out") }
                 }
-                SmallFloatingActionButton(onClick = { recenter++ }) { Text("◎", style = MaterialTheme.typography.titleLarge) }
+                // Locate button = "show me". Without location access it asks (or explains, when only Settings can help).
+                LocateButton(
+                    state = when {
+                        !access.granted || access.servicesOff -> LocateState.Disabled
+                        me == null -> LocateState.Searching
+                        else -> LocateState.Located
+                    },
+                    onClick = {
+                        when {
+                            access.granted -> recenter++
+                            access.servicesOff || access.blocked -> showLocationDialog = true
+                            else -> access.ask()
+                        }
+                    },
+                )
             }
         }
     }
@@ -193,6 +221,17 @@ fun LiveMapScreen(vm: SampleViewModel, ui: SampleUiState, contentPadding: Paddin
 
 /** Collapsed sheet: drag handle + the panel's title and one line. */
 private val PEEK = 128.dp
+
+/**
+ * Space under the panel's content: the keyboard when it's open, else the gesture bar. Counted from the screen's
+ * bottom edge, so when the sheet already sits [bottomInset] higher (above the app's bottom bar), that part is
+ * subtracted. Only the keyboard *once*: the window itself doesn't resize (edge-to-edge).
+ */
+@Composable
+private fun panelBottomPadding(bottomInset: Dp, sheetOverBottomInset: Boolean): Dp {
+    val ime = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
+    return if (sheetOverBottomInset) maxOf(ime, bottomInset) else (ime - bottomInset).coerceAtLeast(0.dp)
+}
 
 private fun buildMarkers(ui: SampleUiState, hideMe: Boolean): List<MapMarker> {
     // Watching an invite: whatever the view link shows.
@@ -206,8 +245,8 @@ private fun buildMarkers(ui: SampleUiState, hideMe: Boolean): List<MapMarker> {
     return d.members.mapNotNull { m ->
         // You are the blue dot when your location is known.
         if (hideMe && m.fullName != null && m.fullName == myName) return@mapNotNull null
-        // A live socket position beats the snapshot from trips.detail().
-        val live = if (ui.liveTripId == d.trip.id) ui.livePositions[m.userId] else null
+        // The newer of the live socket position and the snapshot from trips.detail().
+        val live = ui.newestLive(m, d.trip.id, ui.mapLoadedAt, System.currentTimeMillis())
         val lat = live?.latitude ?: m.lat ?: return@mapNotNull null
         val lon = live?.longitude ?: m.lon ?: return@mapNotNull null
         MapMarker("u${m.userId}", (m.fullName ?: "Member").substringBefore(' '), lat, lon, markerColor(m.userId))
@@ -231,11 +270,10 @@ private fun LivePill(realtime: RealtimeState, watchingInvite: Boolean) {
 
 /** Each panel starts with its title + one status line: that's what the collapsed sheet shows. */
 @Composable
-private fun PanelContent(vm: SampleViewModel, ui: SampleUiState, modifier: Modifier, onMemberTap: (String) -> Unit) {
+private fun PanelContent(vm: SampleViewModel, ui: SampleUiState, access: LocationAccess, modifier: Modifier, onMemberTap: (String) -> Unit) {
     Column(
-        modifier
+        modifier                                      // includes the keyboard's height: see panelBottomPadding
             .fillMaxWidth()
-            .imePadding()                             // keyboard open: content (and the focused field) sits above it
             .verticalScroll(rememberScrollState())   // small screens: scroll inside the expanded sheet
             .animateContentSize()
             .padding(start = 20.dp, end = 20.dp, bottom = 20.dp),
@@ -245,7 +283,7 @@ private fun PanelContent(vm: SampleViewModel, ui: SampleUiState, modifier: Modif
         val detail = ui.mapDetail
         when {
             invite != null -> InvitePanel(vm, ui, invite)
-            detail != null && detail.trip.isLive -> TripPanel(vm, ui, detail, onMemberTap)
+            detail != null && detail.trip.isLive -> TripPanel(vm, ui, detail, access, onMemberTap)
             detail != null -> EndedPanel(vm, detail)
             else -> StartPanel(vm)
         }
@@ -273,8 +311,10 @@ private fun StartPanel(vm: SampleViewModel) {
     when (mode) {
         "start" -> {
             OutlinedTextField(name, { name = it }, label = { Text("Trip name (optional)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-            ChipRow(panelDurations, minutes) { minutes = it }
-            Button(onClick = { vm.mapCreate(name, minutes) }, modifier = Modifier.fillMaxWidth()) { Text("Start & share my location") }
+            DurationPicker(panelDurations, minutes) { minutes = it }
+            Button(
+                onClick = { vm.mapCreate(name, minutes) }, enabled = minutes >= 0, modifier = Modifier.fillMaxWidth(),
+            ) { Text("Start & share my location") }
         }
         "join" -> {
             OutlinedTextField(
@@ -332,9 +372,8 @@ private fun InvitePanel(vm: SampleViewModel, ui: SampleUiState, invite: Invite) 
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)   // combinedClickable on older foundation versions
 @Composable
-private fun TripPanel(vm: SampleViewModel, ui: SampleUiState, d: TripDetail, onMemberTap: (String) -> Unit) {
+private fun TripPanel(vm: SampleViewModel, ui: SampleUiState, d: TripDetail, access: LocationAccess, onMemberTap: (String) -> Unit) {
     val trip = d.trip
-    val context = LocalContext.current
     val sharing by vm.sharingState.collectAsStateWithLifecycle()
     var confirm by remember { mutableStateOf(false) }
     var removing by remember { mutableStateOf<io.baato.trackme.model.TripMember?>(null) }
@@ -343,15 +382,16 @@ private fun TripPanel(vm: SampleViewModel, ui: SampleUiState, d: TripDetail, onM
     LaunchedEffect(trip.id) { while (true) { delay(1_000); now = System.currentTimeMillis() } }
     val remaining = trip.remainingSeconds - (now - ui.mapLoadedAt) / 1_000
 
-    val askLocation = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
-        vm.refreshPermission(); vm.startSharingFromMap()
-    }
-
     Row(verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text(trip.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 1)
             Text("Ends in ${formatSeconds(remaining)} · ${d.members.size} ${if (d.members.size == 1) "person" else "people"}",
                 style = MaterialTheme.typography.bodyMedium)
+            // Time left, draining: same as the sharing notification.
+            LinearProgressIndicator(
+                progress = { (remaining.toFloat() / trip.plannedSeconds.coerceAtLeast(1)).coerceIn(0f, 1f) },
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp).clip(RoundedCornerShape(50)),
+            )
         }
     }
 
@@ -373,12 +413,8 @@ private fun TripPanel(vm: SampleViewModel, ui: SampleUiState, d: TripDetail, onM
     }
     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         d.members.forEach { m ->
-            val live = ui.livePositions[m.userId]?.takeIf { ui.liveTripId == trip.id }
-            val status = when {
-                live != null -> "live"
-                m.hasPosition -> "${formatSeconds(m.fixAgeSeconds ?: 0)} ago"
-                else -> "no location"
-            }
+            // "live" only while positions keep arriving: a paused member turns into "50 s ago" by itself.
+            val status = ui.memberStatus(m, trip.id, ui.mapLoadedAt, now)
             // Tap → the map flies to them (to you, for your own chip). Owner: long-press → remove them.
             val removable = trip.isOwner && !m.isOwner
             Surface(shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.surfaceVariant) {
@@ -404,18 +440,11 @@ private fun TripPanel(vm: SampleViewModel, ui: SampleUiState, d: TripDetail, onM
 
     // Your location.
     val error = ui.mapSharingError
-    if (!sharing.isActive && error is TrackMeError.LocationPermissionDenied) {
-        Button(
-            onClick = {
-                if (error.canAskAgain) {
-                    askLocation.launch(buildList {
-                        add(Manifest.permission.ACCESS_FINE_LOCATION); add(Manifest.permission.ACCESS_COARSE_LOCATION)
-                        if (Build.VERSION.SDK_INT >= 33) add(Manifest.permission.POST_NOTIFICATIONS)
-                    }.toTypedArray())
-                } else context.openAppSettings()
-            },
-            modifier = Modifier.fillMaxWidth(),
-        ) { Text(if (error.canAskAgain) "Allow location to share" else "Allow location in Settings") }
+    if (!sharing.isActive && error is TrackMeError.LocationPermissionDenied && !access.granted) {
+        // Granting starts sharing by itself (vm.onLocationGranted).
+        Button(onClick = access.ask, modifier = Modifier.fillMaxWidth()) {
+            Text(if (access.blocked) "Allow location in Settings" else "Allow location to share")
+        }
     } else {
         val (label, active) = when (sharing) {
             is SharingState.Sharing -> "● Sharing your location · tap to pause" to true

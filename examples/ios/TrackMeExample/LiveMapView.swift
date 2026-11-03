@@ -9,6 +9,8 @@ struct LiveMapView: View {
     @State private var recenter = 0
     @State private var panelExpanded = true
     @State private var panelHeight: CGFloat = 0
+    @State private var showLocationSheet = false
+    @State private var userLocated = false
     private let poll = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
 
     private var granted: Bool { model.permission?.isGranted == true }
@@ -18,7 +20,8 @@ struct LiveMapView: View {
             if Baato.isConfigured {
                 BaatoMapView(markers: markers, fitKey: fitKey, recenterRequest: recenter,
                              focus: model.mapFocus, bottomInset: panelHeight,
-                             onMarkerTap: { model.focusOnMember($0) })
+                             onMarkerTap: { model.focusOnMember($0) }, showsUser: granted,
+                             onUserLocated: { userLocated = $0 })
                     .ignoresSafeArea()
             } else {
                 MissingBaatoKeyView()
@@ -26,15 +29,21 @@ struct LiveMapView: View {
 
             VStack {
                 HStack(alignment: .top) {
-                    if model.mapDetail?.trip.isLive == true || model.invite != nil { LivePill() }
+                    VStack(alignment: .leading, spacing: 8) {
+                        if model.mapDetail?.trip.isLive == true || model.invite != nil { LivePill() }
+                        LocationPill { showLocationSheet = true }
+                    }
                     Spacer()
                     VStack(alignment: .trailing, spacing: 8) {
                         Button("Log out") { model.logout() }
                             .font(.subheadline.weight(.semibold))
                             .padding(.horizontal, 14).padding(.vertical, 8)
                             .background(.regularMaterial, in: Capsule())
-                        Button { recenter += 1 } label: {
-                            Image(systemName: "location.fill").padding(12).background(.regularMaterial, in: Circle())
+                        // "Show me". Without location access it asks (or explains, when only Settings can help).
+                        LocateButton(state: locateState) {
+                            if granted { recenter += 1 }
+                            else if model.locationCanAsk && model.permission?.servicesEnabled == true { model.askLocation() }
+                            else { showLocationSheet = true }
                         }
                     }
                 }
@@ -47,9 +56,17 @@ struct LiveMapView: View {
         .onPreferenceChange(PanelRestingHeightKey.self) { panelHeight = $0 }
         // Tapping a member drops the panel to its peek, so they're visible.
         .onChange(of: model.mapFocus) { _ in panelExpanded = false }
-        .onAppear { model.refreshPermission(); model.mapRefresh() }   // every time the map appears
+        // Every time the map appears. Location is asked once by itself if never decided; after that only from
+        // ◎, "Allow location" or the location pill. Never nags.
+        .onAppear { model.autoAskLocationIfNeeded(); model.mapRefresh() }
+        .sheet(isPresented: $showLocationSheet) { LocationAccessSheet().environmentObject(model).mediumDetent() }
         // Fallback next to the socket: while no live position arrives, refresh the trip snapshot every 5 s.
         .onReceive(poll) { _ in model.mapPoll() }
+    }
+
+    private var locateState: LocateState {
+        if !granted || model.permission?.servicesEnabled == false { return .disabled }
+        return userLocated ? .located : .searching
     }
 
     private var fitKey: String? {
@@ -69,8 +86,8 @@ struct LiveMapView: View {
         return d.members.compactMap { m in
             // You are the blue dot when location is allowed.
             if granted, let name = m.fullName, name == myName { return nil }
-            // A live socket position beats the snapshot from trips.detail().
-            let live = model.liveTripId == d.trip.id ? model.livePositions[m.userId] : nil
+            // The newer of the live socket position and the snapshot from trips.detail().
+            let live = model.newestLive(m, tripId: d.trip.id, loadedAt: model.mapLoadedAt, now: Date())
             guard let lat = live?.latitude ?? m.lat?.doubleValue, let lon = live?.longitude ?? m.lon?.doubleValue else { return nil }
             return MapMarker(id: "u\(m.userId)", label: firstName(m.fullName), latitude: lat, longitude: lon, color: markerColor("\(m.userId)"))
         }
@@ -205,14 +222,13 @@ private struct StartPanel: View {
 
         if mode == "start" {
             TextField("Trip name (optional)", text: $name).textFieldStyle(PanelFieldStyle())
-            Picker("Duration", selection: $minutes) {
-                Text("30 min").tag(30); Text("1 h").tag(60); Text("2 h").tag(120); Text("4 h").tag(240)
-            }
-            .pickerStyle(.segmented)
+            DurationPicker(presets: [("30 min", 30), ("1 h", 60), ("2 h", 120), ("4 h", 240)], minutes: $minutes)
+                .textFieldStyle(PanelFieldStyle())
             Button { model.mapCreate(name: name, minutes: minutes) } label: {
                 Text("Start & share my location").frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent).controlSize(.large)
+            .disabled(minutes < 0)
         } else if mode == "join" {
             HStack {
                 TextField("Join code or invite message", text: $invite)
@@ -279,6 +295,9 @@ private struct TripPanel: View {
             Text(trip.name).font(.title2.bold()).lineLimit(1)
             Text("Ends in \(formatSeconds(remaining)) · \(detail.members.count) \(detail.members.count == 1 ? "person" : "people")")
                 .font(.subheadline.monospacedDigit()).foregroundColor(.secondary)
+            // Time left, draining: same as the Live Activity.
+            ProgressView(value: Double(max(0, min(remaining, trip.plannedSeconds))), total: Double(max(1, trip.plannedSeconds)))
+                .padding(.top, 6)
         }
         .onReceive(tick) { now = $0 }
 
@@ -355,10 +374,9 @@ private struct TripPanel: View {
         }
     }
 
+    /// "live" only while positions keep arriving: a paused member turns into "50 s ago" by itself (`now` ticks).
     private func status(_ m: TripMember) -> String {
-        if model.liveTripId == trip.id, model.livePositions[m.userId] != nil { return "live" }
-        if m.hasPosition { return "\(formatSeconds(m.fixAgeSeconds?.int64Value ?? 0)) ago" }
-        return "no location"
+        model.memberStatus(m, tripId: trip.id, loadedAt: model.mapLoadedAt, now: now)
     }
 
     private var sharingActive: Bool { model.sharing is SharingState.Sharing || model.sharing is SharingState.Starting }

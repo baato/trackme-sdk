@@ -33,11 +33,20 @@ class TripsApiTest {
         assertEquals("C7FKK7", trip.joinCode)
     }
 
+    /** The duration range is the server's: any value is sent, and a 422 comes back with the server's message. */
     @Test
-    fun create_outOfRangeDuration_isRejectedWithoutRequest() = runTest {
-        startWith { fail("no request should be sent") }
-        assertIs<TrackMeError.Validation>(TrackMe.trips.create(null, durationMin = 2).errorOrNull())
-        assertIs<TrackMeError.Validation>(TrackMe.trips.create(null, durationMin = 2000).errorOrNull())
+    fun create_durationIsSentAsIs_andTheServersErrorIsShown() = runTest {
+        var sent = ""
+        startWith { request ->
+            sent = (request.body as io.ktor.http.content.TextContent).text
+            json(
+                """{"detail":[{"type":"greater_than_equal","loc":["body","duration_min"],"msg":"Input should be greater than or equal to 5","input":2}]}""",
+                io.ktor.http.HttpStatusCode.UnprocessableEntity,
+            )
+        }
+        val error = assertIs<TrackMeError.Validation>(TrackMe.trips.create(null, durationMin = 2).errorOrNull())
+        assertTrue("\"duration_min\":2" in sent, sent)
+        assertEquals("duration_min: Input should be greater than or equal to 5", error.message)
     }
 
     @Test

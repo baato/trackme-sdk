@@ -30,9 +30,14 @@ import io.ktor.http.contentType
  */
 class TripsApi internal constructor(private val sdk: TrackMe) {
 
-    /** Owner creates a trip. Show [CreatedTrip.joinCode] so others can join; [CreatedTrip.viewLink] is public. */
+    /**
+     * Owner creates a trip. Show [CreatedTrip.joinCode] so others can join; [CreatedTrip.viewLink] is public.
+     *
+     * [durationMin] is sent as is: the allowed range is the server's to decide (5–1440 today), so it can change
+     * without an SDK release. Out of range → [TrackMeError.Validation] with the server's own message,
+     * e.g. "duration_min: Input should be greater than or equal to 5".
+     */
     suspend fun create(name: String?, durationMin: Int): TrackMeResult<CreatedTrip> {
-        if (durationMin !in DURATION_RANGE) return invalid("durationMin must be between 5 and 1440 minutes")
         if (name != null && name.length > NAME_MAX) return invalid("name must be at most $NAME_MAX characters")
         return sdk.call {
             http.post("v1/trips") {
@@ -42,9 +47,11 @@ class TripsApi internal constructor(private val sdk: TrackMe) {
         }
     }
 
-    /** Trips the user created or joined, newest first. [limit] 1–50. */
+    /**
+     * Trips the user created or joined, newest first. [limit] is sent as is: the server sets the allowed range
+     * (1–50 today) and answers [TrackMeError.Validation] with its own message outside it.
+     */
     suspend fun list(limit: Int): TrackMeResult<List<Trip>> {
-        if (limit !in 1..50) return invalid("limit must be between 1 and 50")
         return sdk.call { http.get("v1/trips") { parameter("limit", limit) }.body<TripListResponse>().trips }
     }
 
@@ -122,7 +129,6 @@ class TripsApi internal constructor(private val sdk: TrackMe) {
     private fun invalid(msg: String) = TrackMeResult.Failure(TrackMeError.Validation(msg))
 
     private companion object {
-        val DURATION_RANGE = 5..1440
         const val NAME_MAX = 100
     }
 }

@@ -7,6 +7,7 @@ import io.baato.trackme.location.LocationPermissionStatus
 import io.baato.trackme.location.LocationUpdate
 import io.baato.trackme.sharing.SharingOptions
 import io.baato.trackme.sharing.SharingState
+import io.baato.trackme.sharing.SharingWindow
 import io.baato.trackme.sharing.TrackMeSharingUi
 import kotlinx.coroutines.flow.Flow
 
@@ -34,8 +35,11 @@ internal interface PlatformServices {
      */
     fun startSharingHost(ui: TrackMeSharingUi): TrackMeResult<Unit>
 
-    /** Called on every SharingState change so the notification / Live Activity stays current. */
-    fun updateSharingHost(ui: TrackMeSharingUi, state: SharingState)
+    /**
+     * Called on every SharingState change so the notification / Live Activity stays current.
+     * [window] = when the shared trips end (null until known), for a countdown.
+     */
+    fun updateSharingHost(ui: TrackMeSharingUi, state: SharingState, window: SharingWindow?)
 
     fun stopSharingHost()
 

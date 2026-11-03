@@ -188,7 +188,7 @@ There are two ways to share a trip:
 - **Join code**, e.g. `C7FKK7`: the other person joins as a member and can share their own location.
 - **View link**, e.g. `https://tracker.baato.io/trackme/s/…`: anyone with the link can watch in a browser, read-only. Rotate it if it leaks.
 
-Inputs are checked against the API limits before anything is sent: duration 5–1440 minutes, name up to 100 characters, code 1–16 characters.
+The trip duration is sent as given: its range is the server's (5–1440 minutes today), so it can change without an SDK update. Out of range, you get `Validation` with the server's message, such as "duration_min: Input should be greater than or equal to 5". Name (up to 100 characters) and code (1–16 characters) are still checked before anything is sent.
 
 **Kotlin**
 ```kotlin
@@ -293,6 +293,7 @@ TrackMe.events.collect { e ->
     when (e) {
         is TrackMeEvent.TripPosition -> map.move(e.position.userId, e.position.latitude, e.position.longitude)
         is TrackMeEvent.MemberChanged -> reloadMembers()                 // someone joined
+        is TrackMeEvent.MemberSharingChanged -> showState(e.userId, e.state)   // paused / resumed / stopped
         is TrackMeEvent.TripEnded, is TrackMeEvent.Evicted -> closeTripScreen()
         else -> Unit
     }
@@ -327,6 +328,7 @@ _ = TrackMe.shared.realtime.stopWatchingTrip()
 |---|---|---|
 | `TripPosition(position)` | a member of the watched trip uploaded a fix | `MemberPosition`: `tripId`, `userId`, `fullName`, `latitude`, `longitude`, `speedMetersPerSecond`, `fixAgeSeconds`. Decoded exactly per the contract in [trackme-api.md → Realtime](trackme-api.md#realtime-socketio); a payload that doesn't match is dropped and shows up in `TrackMe.debugLogger` |
 | `MemberChanged(change)` | someone joined the trip (`change.joined`) | `tripId`, `userId`, `displayName`, `change` |
+| `MemberSharingChanged(tripId, userId, displayName, state)` | a member started, paused, resumed or stopped sharing: show it at once | `state`: `MemberSharingState.Sharing / Paused / Stopped`. **Needs the backend's proposed `sharing_state` support** ([trackme-api.md → Proposed: sharing state](trackme-api.md#proposed-sharing-state-pause-shows-at-once-on-other-phones)); until then it never arrives. `TripMember.sharingState` carries the same in `trips.detail` |
 | `TripEnded(tripId, reason)` | owner ended it, or time ran out | the SDK stops watching it |
 | `Evicted(tripId, reason)` | you were removed, left on another device, or the trip ended | the SDK stops watching it and does **not** reconnect to it |
 | `SharePosition(position)` / `ShareEnded` | only with `watchShare` (below) | same `MemberPosition` |
@@ -357,7 +359,9 @@ Set the look once with `TrackMeConfig.sharingUi`:
 | `androidChannelName` | name shown in system notification settings | — |
 | `iosSymbolName` | — | SF Symbol |
 
-- **Android:** an ongoing notification with **Pause/Resume** and **Stop** buttons. Tapping it opens your app. It works out of the box.
+Both show **how long the trip has left**: a countdown and a bar that drains as it runs out, with "Live · 1 trip · ends 17:45". With several trips, it's the one that ends last, since sharing runs until then. When the set of trips changes, the SDK reads their end times with one `GET /v1/trips`. Until that answer arrives, the first seconds show "Updated … ago" instead.
+
+- **Android:** an ongoing notification with **Pause/Resume** and **Stop** buttons. The header counts down by itself (a chronometer), and the progress bar updates with each upload. Tapping it opens your app. It works out of the box.
 - **iOS:** the blue location indicator appears while sharing in the background. The `TrackMeLiveActivity` package adds the lock screen and Dynamic Island:
 
   | iOS | Shows | Buttons |
@@ -372,10 +376,10 @@ Set the look once with `TrackMeConfig.sharingUi`:
      @main struct MyWidgets: WidgetBundle { var body: some Widget { TrackMeLiveActivityWidget() } }
      ```
   2. App `Info.plist`: `NSSupportsLiveActivities = YES`.
-  3. Copy `sample-ios/TrackMeSample/LiveActivityPresenter.swift` into your app. It's about 30 lines that turn the SDK's `SharingSnapshot` into the Live Activity's content. Call `LiveActivityPresenter.install()` once at launch. It registers the presenter, routes the Pause/Resume/Stop buttons back to `TrackMe.shared.sharing`, and sets the notification delegate for the iOS 15 fallback.
+  3. Copy `sample-ios/TrackMeSample/LiveActivityPresenter.swift` into your app. It's about 30 lines that turn the SDK's `SharingSnapshot` into the Live Activity's content (including `tripStartedAtMillis` / `tripEndsAtMillis` for the countdown; 0 = not known yet). Call `LiveActivityPresenter.install()` once at launch. It registers the presenter, routes the Pause/Resume/Stop buttons back to `TrackMe.shared.sharing`, and sets the notification delegate for the iOS 15 fallback.
   4. For the iOS 15 fallback only, call `await TrackMeActivityController.shared.requestNotificationPermission()` once, e.g. next to your location permission request.
 
-  A Live Activity can only start while the app is visible, which is when sharing starts anyway. If it can't start, the notification fallback is used. Updates are throttled to state changes plus one every 15 seconds; the "updated … ago" text ticks on its own.
+  A Live Activity can only start while the app is visible, which is when sharing starts anyway. If it can't start, the notification fallback is used. Updates are throttled to state changes plus one every 15 seconds. The countdown, its bar and the "updated … ago" text are animated by iOS itself (`Text(timerInterval:)`, `ProgressView(timerInterval:)`), so they need no updates.
 
 ---
 

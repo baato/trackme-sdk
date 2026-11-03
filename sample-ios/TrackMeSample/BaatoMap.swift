@@ -59,6 +59,8 @@ func markerColor(_ key: String) -> UIColor {
 /// - `bottomInset`: height of the panel over the map. It becomes the map's content inset, so every
 ///   "centre on X" lands in the visible part above the panel, not behind it.
 /// - `onMarkerTap`: a member dot was tapped (its `MapMarker.id`).
+/// - `showsUser`: the blue "you" dot. Only on once location is allowed: turning it on makes MapLibre ask for
+///   permission by itself, and the app wants to decide when that prompt appears.
 struct BaatoMapView: UIViewRepresentable {
     let markers: [MapMarker]
     let fitKey: String?
@@ -66,6 +68,9 @@ struct BaatoMapView: UIViewRepresentable {
     var focus: MapFocus? = nil
     var bottomInset: CGFloat = 0
     var onMarkerTap: (String) -> Void = { _ in }
+    var showsUser = false
+    /// Whether MapLibre has a position for the blue dot (false while searching, or when it can't locate).
+    var onUserLocated: (Bool) -> Void = { _ in }
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
@@ -73,7 +78,7 @@ struct BaatoMapView: UIViewRepresentable {
         let map = MLNMapView(frame: .zero, styleURL: Baato.styleURL)
         map.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         map.setCenter(Baato.kathmandu, zoomLevel: 12, animated: false)
-        map.showsUserLocation = true   // only shows once location permission is granted
+        map.showsUserLocation = showsUser
         map.automaticallyAdjustsContentInset = false   // we set it: top buttons + the panel
         map.delegate = context.coordinator
         return map
@@ -82,6 +87,8 @@ struct BaatoMapView: UIViewRepresentable {
     func updateUIView(_ map: MLNMapView, context: Context) {
         let c = context.coordinator
         c.onMarkerTap = onMarkerTap
+        c.onUserLocated = onUserLocated
+        if map.showsUserLocation != showsUser { map.showsUserLocation = showsUser }
         // Keep the logical map centre between the top buttons and the panel.
         let inset = UIEdgeInsets(top: map.safeAreaInsets.top + 56, left: 0, bottom: map.safeAreaInsets.bottom + bottomInset + 12, right: 0)
         if inset != c.lastInset {
@@ -115,6 +122,8 @@ struct BaatoMapView: UIViewRepresentable {
         var focusSeq = 0
         var lastInset = UIEdgeInsets.zero
         var onMarkerTap: (String) -> Void = { _ in }
+        var onUserLocated: (Bool) -> Void = { _ in }
+        private var located: Bool?
         /// The last "fly to" (member focus / recenter) and when it started; see the inset handling in updateUIView.
         var recentTarget: (coordinate: CLLocationCoordinate2D, zoom: Double, at: Date)?
         private var centeredOnUser = false
@@ -194,9 +203,19 @@ struct BaatoMapView: UIViewRepresentable {
 
         /// Go to the user the first time we know where they are (unless a trip / invite fit already happened).
         func mapView(_ mapView: MLNMapView, didUpdate userLocation: MLNUserLocation?) {
+            report(userLocation?.location != nil)
             guard !centeredOnUser, fittedFor == nil, let location = userLocation?.location else { return }
             centeredOnUser = true
             mapView.setCenter(location.coordinate, zoomLevel: 15, animated: true)
+        }
+
+        func mapView(_ mapView: MLNMapView, didFailToLocateUserWithError error: Error) { report(false) }
+
+        /// Only on change: SwiftUI state shouldn't update on every GPS fix.
+        private func report(_ value: Bool) {
+            guard value != located else { return }
+            located = value
+            DispatchQueue.main.async { self.onUserLocated(value) }
         }
     }
 }

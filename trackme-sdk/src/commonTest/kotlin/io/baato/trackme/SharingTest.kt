@@ -16,6 +16,7 @@ import io.ktor.http.content.TextContent
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.decodeFromString
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -98,6 +99,7 @@ class SharingTest {
         val platform = FakePlatform()
         var body = ""
         startWith(platform = platform) { request ->
+            if (!request.url.encodedPath.endsWith("ingest/live")) return@startWith json("""{"trips":[]}""")
             body = (request.body as TextContent).text
             json("""{"accepted":true,"trip_ids":[17],"fix_age_s":0}""")
         }
@@ -162,7 +164,11 @@ class SharingTest {
     fun pause_stopsUploads_resume_continues() = runTest {
         val platform = FakePlatform()
         val uploads = Counter()
-        startWith(platform = platform) { uploads.value++; json("""{"accepted":true,"trip_ids":[17],"fix_age_s":0}""") }
+        startWith(platform = platform) { request ->
+            if (!request.url.encodedPath.endsWith("ingest/live")) return@startWith json("""{"trips":[]}""")
+            uploads.value++
+            json("""{"accepted":true,"trip_ids":[17],"fix_age_s":0}""")
+        }
         TrackMe.sharing.start(fast)
         platform.push(27.7, 85.3)
         awaitState { it is SharingState.Sharing && it.lastSentAtMillis != null }
@@ -200,7 +206,90 @@ class SharingTest {
         assertEquals(1, platform.hostStopped)
     }
 
+    @Test
+    fun tripWindow_isLoadedOnce_andHandedToTheHost() = runTest {
+        val platform = FakePlatform()
+        val listCalls = Counter()
+        startWith(platform = platform) { request ->
+            if (request.url.encodedPath.endsWith("v1/trips")) {
+                listCalls.value++
+                json("""{"trips":[$TRIP_SUMMARY_JSON]}""")   // trip 17: planned 3600 s, 3470 s left
+            } else {
+                json("""{"accepted":true,"trip_ids":[17],"fix_age_s":0}""")
+            }
+        }
+        TrackMe.sharing.start(fast)
+        platform.push(27.7, 85.3)
+        val window = realTime { while (platform.lastWindow == null) delay(10); platform.lastWindow!! }
+        assertEquals(3_600_000, window.endsAtMillis - window.startedAtMillis)
+        val left = window.endsAtMillis - platform.nowMillis()
+        assertTrue(left in 3_460_000..3_470_000, "left: $left")
+
+        realTime { delay(300) }   // several more uploads with the same trip ids
+        assertEquals(1, listCalls.value, "loaded once per set of trips")
+    }
+
+    @Test
+    fun sharingState_isReported_onStart_pause_resume_stop() = runTest {
+        val platform = FakePlatform()
+        val reported = kotlinx.coroutines.channels.Channel<String>(kotlinx.coroutines.channels.Channel.UNLIMITED)
+        startWith(platform = platform) { request ->
+            when {
+                request.url.encodedPath.endsWith("ingest/state") -> {
+                    reported.trySend((request.body as TextContent).text)
+                    respond("", HttpStatusCode.NotFound)   // today's server: unknown endpoint, must change nothing
+                }
+                request.url.encodedPath.endsWith("v1/trips") -> json("""{"trips":[]}""")
+                else -> json("""{"accepted":true,"trip_ids":[17],"fix_age_s":0}""")
+            }
+        }
+        suspend fun next() = realTime { reported.receive() }
+
+        TrackMe.sharing.start(fast)
+        assertEquals("""{"state":"sharing"}""", next())
+        platform.push(27.7, 85.3)
+        awaitState { it is SharingState.Sharing && it.lastSentAtMillis != null }   // the 404 didn't stop sharing
+
+        TrackMe.sharing.pause()
+        assertEquals("""{"state":"paused"}""", next())
+        TrackMe.sharing.pause()   // already paused: nothing new to report
+        TrackMe.sharing.resume()
+        assertEquals("""{"state":"sharing"}""", next())
+        TrackMe.sharing.stop()
+        assertEquals("""{"state":"stopped"}""", next())
+    }
+
     // ---------- pure logic ----------
+
+    @Test
+    fun tripMember_readsSharingState_andIgnoresUnknownValues() {
+        fun member(raw: String) = io.baato.trackme.network.TrackMeJson.decodeFromString<io.baato.trackme.model.TripMember>(raw)
+        assertEquals(
+            io.baato.trackme.model.MemberSharingState.Paused,
+            member("""{"user_id":9,"role":"member","sharing_state":"paused"}""").sharingState,
+        )
+        assertNull(member("""{"user_id":9,"role":"member"}""").sharingState)            // today's server
+        assertNull(member("""{"user_id":9,"role":"member","sharing_state":"zzz"}""").sharingState)
+    }
+
+    @Test
+    fun windowOf_picksTheLiveTripThatEndsLast() {
+        fun trip(id: Long, status: String, planned: Long, remaining: Long) = io.baato.trackme.model.Trip(
+            id = id, name = "t$id", myRole = "member", myStatus = "joined", status = status, memberCount = 1,
+            startedOn = "", plannedSeconds = planned, actualSeconds = 0, expiresAt = "", remainingSeconds = remaining,
+        )
+        val trips = listOf(
+            trip(1, "live", planned = 1_800, remaining = 600),
+            trip(2, "live", planned = 7_200, remaining = 5_000),
+            trip(3, "live", planned = 86_400, remaining = 80_000),   // not shared
+            trip(4, "ended", planned = 3_600, remaining = 0),
+        )
+        val w = SharingController.windowOf(trips, setOf(1, 2, 4), nowMillis = 1_000_000)!!
+        assertEquals(1_000_000 + 5_000_000, w.endsAtMillis)
+        assertEquals(w.endsAtMillis - 7_200_000, w.startedAtMillis)
+        assertNull(SharingController.windowOf(trips, setOf(4, 99), nowMillis = 0))
+        assertEquals(0.5, io.baato.trackme.sharing.SharingWindow(0, 100).elapsedFraction(50))
+    }
 
     private fun loc(lat: Double, lon: Double) = TrackMeLocation(lat, lon, 0, null, null, null, null)
 
