@@ -13,7 +13,7 @@ configFiles:
 packages:
   TrackMe:                         # products: TrackMeSDK (XCFramework) + TrackMeLiveActivity
     url: https://github.com/baato/trackme-sdk
-    from: 0.1.0
+    from: 0.2.0   # the app code uses 0.2.0 APIs (countdown, sharing state)
   MapLibre:                        # the live map (Baato breeze style)
     url: https://github.com/maplibre/maplibre-gl-native-distribution
     from: 6.29.0

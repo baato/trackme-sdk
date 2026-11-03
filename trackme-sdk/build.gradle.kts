@@ -10,7 +10,7 @@ plugins {
 
 group = "io.baato.trackme"
 // Release with: ./gradlew :trackme-sdk:publish -Ptrackme.version=0.2.0  (see docs/05-releasing.md)
-version = providers.gradleProperty("trackme.version").getOrElse("0.1.0")
+version = providers.gradleProperty("trackme.version").getOrElse("0.2.0")
 
 kotlin {
     // expect/actual *classes* (PlatformContext) are Beta; opt in to silence the warning.

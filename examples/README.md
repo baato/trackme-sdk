@@ -4,8 +4,8 @@ These two apps don't build the SDK. They download the **released** packages, the
 
 | | Gets the SDK from | Dependency |
 |---|---|---|
-| `android/` | JitPack | `com.github.baato.trackme-sdk:trackme-sdk-android:0.1.0` |
-| `ios/` | SwiftPM | `https://github.com/baato/trackme-sdk`, from `0.1.0`: products `TrackMeSDK` + `TrackMeLiveActivity` |
+| `android/` | JitPack | `com.github.baato.trackme-sdk:trackme-sdk-android:0.2.0` |
+| `ios/` | SwiftPM | `https://github.com/baato/trackme-sdk`, from `0.2.0`: products `TrackMeSDK` + `TrackMeLiveActivity` |
 
 The app code is the same as `sample-android/` and `sample-ios/`: the Live map showcase plus the Developer screens covering every SDK call ([docs/06-sample-apps.md](../docs/06-sample-apps.md)). The difference is only where the SDK comes from:
 
@@ -36,7 +36,7 @@ xcodegen && open TrackMeExample.xcodeproj
 
 Pick your Team under *Signing & Capabilities* for both targets, then Run. Xcode resolves the TrackMe package and downloads `TrackMeSDK.xcframework.zip` from the GitHub release, checking it against the checksum in `Package.swift`. No Gradle or JDK is needed.
 
-Packages are pinned in `project.yml` (`from: 0.1.0`, so any 0.x ≥ 0.1.0). To try a new release: *File → Packages → Update to Latest Package Versions*, or *Reset Package Caches* if a release was re-uploaded.
+Packages are pinned in `project.yml` (`from: 0.2.0`, so any 0.x ≥ 0.2.0). To try a new release: *File → Packages → Update to Latest Package Versions*, or *Reset Package Caches* if a release was re-uploaded.
 
 ## Keeping them in step
 

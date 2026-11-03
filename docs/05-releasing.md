@@ -7,9 +7,11 @@ How the repo goes public on GitHub, and how a version of TrackMe gets from this 
 | Android | JitPack (current): `com.github.baato.trackme-sdk:trackme-sdk-android:<tag>`, built from the git tag. Own group `io.baato.trackme` if moved to Maven Central or a Baato repository | `implementation("com.github.baato.trackme-sdk:trackme-sdk-android:<tag>")` with `maven("https://jitpack.io")` |
 | iOS | `TrackMeSDK.xcframework` (static, device + Apple-silicon simulator) and the `TrackMeLiveActivity` Swift package | SwiftPM: the repo's git URL and a version tag |
 
-The version comes from `-Ptrackme.version=…` (default `0.1.0` in `trackme-sdk/build.gradle.kts`). Use the same number on both platforms.
+The version comes from `-Ptrackme.version=…` (default `0.2.0` in `trackme-sdk/build.gradle.kts`). Use the same number on both platforms.
 
-**Released:** `0.1.0` (2 Nov 2026): SwiftPM release with `TrackMeSDK.xcframework.zip`, JitPack build green. Check each release with the apps in `examples/`, which install the published packages.
+**Released:**
+- `0.2.0` (3 Nov 2026): trip countdown in the notification / Live Activity, sharing-state reporting (`MemberSharingChanged`, ready for the backend), server-owned duration / list limits, iOS main-thread fix, compact Live Activity.
+- `0.1.0` (2 Nov 2026): first release. SwiftPM release with `TrackMeSDK.xcframework.zip`, JitPack build green. Check each release with the apps in `examples/`, which install the published packages.
 
 ---
 

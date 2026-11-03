@@ -20,7 +20,7 @@ android {
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
-        versionName = "0.1.0"
+        versionName = "0.2.0"
 
         buildConfigField("String", "TRACKME_API_SECRET", "\"${localProps.getProperty("trackme.apiSecret", "")}\"")
         buildConfigField("String", "TRACKME_API_URL", "\"https://tracker.baato.io/trackme/api\"")
@@ -56,7 +56,7 @@ android {
 }
 
 dependencies {
-    implementation(project(":trackme-sdk"))   // in a real app: implementation("io.baato.trackme:trackme-sdk:0.1.0")
+    implementation(project(":trackme-sdk"))   // in a real app: implementation("com.github.baato.trackme-sdk:trackme-sdk-android:0.2.0")
 
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.material3)

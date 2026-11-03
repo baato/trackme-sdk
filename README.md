@@ -28,7 +28,7 @@ The project doubles as a step-by-step KMP walkthrough:
 | `scripts/release-ios.sh` | builds and zips the XCFramework, generates the SwiftPM `Package.swift` |
 | `scripts/sync-examples.sh` | copies the sample app code into `examples/` |
 
-## Install (0.1.0)
+## Install (0.2.0)
 
 **Android** (JitPack):
 
@@ -41,10 +41,10 @@ dependencyResolutionManagement {
     }
 }
 // app/build.gradle.kts  (compileSdk 37, minSdk 24)
-dependencies { implementation("com.github.baato.trackme-sdk:trackme-sdk-android:0.1.0") }
+dependencies { implementation("com.github.baato.trackme-sdk:trackme-sdk-android:0.2.0") }
 ```
 
-**iOS** (SwiftPM): *File → Add Package Dependencies…* → `https://github.com/baato/trackme-sdk` → `0.1.0`, then add `TrackMeSDK` (and `TrackMeLiveActivity` for the Live Activity) to your app.
+**iOS** (SwiftPM): *File → Add Package Dependencies…* → `https://github.com/baato/trackme-sdk` → `0.2.0`, then add `TrackMeSDK` (and `TrackMeLiveActivity` for the Live Activity) to your app.
 
 Full guide: [docs/04-integration-guide.md](docs/04-integration-guide.md). Working apps: [examples/](examples/).
 
