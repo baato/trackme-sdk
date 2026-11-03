@@ -87,7 +87,7 @@ class TripsApiTest {
                 HttpStatusCode.UnprocessableEntity, jsonHeaders)
         }
         val error = assertIs<TrackMeError.Validation>(TrackMe.trips.create(null, 60).errorOrNull())
-        assertEquals("too small", error.message)
+        assertEquals("duration_min: too small", error.message)   // the field name in front: which input it means
     }
 
     @Test
