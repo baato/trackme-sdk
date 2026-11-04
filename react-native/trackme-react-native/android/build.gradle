@@ -1,0 +1,64 @@
+// Android side of @baato/trackme-react-native: a Turbo Module that passes strings to TrackMeBridge in the
+// native TrackMe SDK.
+
+// The TrackMe SDK version this module wraps. Development against this repo's SDK source:
+//   ./gradlew :trackme-sdk:publishToMavenLocal -Ptrackme.version=0.3.0   (repo root)
+// and `trackme.useLocalSdk=true` in the app's android/gradle.properties.
+def trackmeSdkVersion = "0.3.0"
+def useLocalSdk = (rootProject.findProperty("trackme.useLocalSdk") ?: "false").toString().toBoolean()
+
+buildscript {
+    ext.safeExtGet = { prop, fallback -> rootProject.ext.has(prop) ? rootProject.ext.get(prop) : fallback }
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath("com.android.tools.build:gradle:8.13.0")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:${safeExtGet("kotlinVersion", "2.2.20")}")
+    }
+}
+
+// The app resolves this module's dependencies with its own repositories, so they're added there; JitPack only
+// for the TrackMe group.
+rootProject.allprojects {
+    repositories {
+        maven {
+            url = uri("https://jitpack.io")
+            content { includeGroup("com.github.baato.trackme-sdk") }
+        }
+        mavenLocal {
+            content { includeGroup("io.baato.trackme") }
+        }
+    }
+}
+
+apply plugin: "com.android.library"
+apply plugin: "kotlin-android"
+apply plugin: "com.facebook.react"   // runs codegen for src/NativeTrackMe.ts
+
+android {
+    namespace = "io.baato.trackme.reactnative"
+    compileSdk = 37   // the TrackMe SDK requires compileSdk 37, so the app needs it too
+
+    defaultConfig {
+        minSdk = 24
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+    sourceSets {
+        main.java.srcDirs += ["src/main/kotlin"]
+    }
+}
+
+dependencies {
+    implementation("com.facebook.react:react-android")
+    implementation(useLocalSdk
+        ? "io.baato.trackme:trackme-sdk-android:$trackmeSdkVersion"
+        : "com.github.baato.trackme-sdk:trackme-sdk-android:$trackmeSdkVersion")
+}

@@ -1,0 +1,63 @@
+// Android side of trackme_flutter: a thin pass-through to TrackMeBridge in the native TrackMe SDK.
+group = "io.baato.trackme.flutter"
+version = "0.3.0"
+
+// The TrackMe SDK version this plugin wraps. Development against this repo's SDK source:
+//   ./gradlew :trackme-sdk:publishToMavenLocal -Ptrackme.version=0.3.0   (repo root)
+// and `trackme.useLocalSdk=true` in the app's android/gradle.properties.
+def trackmeSdkVersion = "0.3.0"
+def useLocalSdk = (rootProject.findProperty("trackme.useLocalSdk") ?: "false").toString().toBoolean()
+
+buildscript {
+    ext.kotlin_version = "2.2.20"
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath("com.android.tools.build:gradle:8.13.0")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version")
+    }
+}
+
+// The SDK comes from JitPack (released) or the local Maven repo (development). The app resolves this plugin's
+// dependencies with its own repositories, so they're added there; JitPack only for the TrackMe group.
+rootProject.allprojects {
+    repositories {
+        maven {
+            url = uri("https://jitpack.io")
+            content { includeGroup("com.github.baato.trackme-sdk") }
+        }
+        mavenLocal {
+            content { includeGroup("io.baato.trackme") }
+        }
+    }
+}
+
+apply plugin: "com.android.library"
+apply plugin: "kotlin-android"
+
+android {
+    namespace = "io.baato.trackme.flutter"
+    compileSdk = 37   // the TrackMe SDK requires compileSdk 37, so the app needs it too
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+    sourceSets {
+        main.java.srcDirs += "src/main/kotlin"
+    }
+    defaultConfig {
+        minSdk = 24
+    }
+}
+
+dependencies {
+    implementation(useLocalSdk
+        ? "io.baato.trackme:trackme-sdk-android:$trackmeSdkVersion"
+        : "com.github.baato.trackme-sdk:trackme-sdk-android:$trackmeSdkVersion")
+}

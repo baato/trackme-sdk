@@ -1,6 +1,6 @@
 # Flutter and React Native ports
 
-**Status:** in progress on the `ports` branch. Step 1, the bridge core in the SDK, is done; the packages come next.
+**Status:** in progress on the `ports` branch. Steps 1 and 2, the bridge core and both packages, are written; the sample apps come next.
 
 ## The approach: wrap the KMP SDK, don't rewrite it
 
@@ -32,7 +32,7 @@ A Dart or TypeScript rewrite would still need native code for all of those. It w
 
 ### Calls
 
-- **Initialize:** `initialize(context, configJson, tokenProvider)` returns an envelope synchronously.
+- **Start a session:** `start(context, configJson, tokenProvider)` (it runs `TrackMe.initialize`) returns an envelope synchronously. It's named `start` because Objective-C treats `init…` methods as initializers.
 - **Everything else:** `call(method, argsJson, onResult)` calls `onResult` once, possibly on a background thread.
 - **Envelopes:**
   - success: `{"ok":true,"value":…}`;
@@ -67,7 +67,7 @@ A Dart or TypeScript rewrite would still need native code for all of those. It w
 | `notifications.markRead` | `notification_id` | null |
 | `notifications.markAllRead` | – | null |
 
-**Config** (`initialize`): `{"token", "api_url"?, "socket_url"?, "request_timeout_ms"?, "token_refresh_timeout_ms"?, "sharing_ui"?}`. `sharing_ui` keys:
+**Config** (`start`): `{"token", "api_url"?, "socket_url"?, "request_timeout_ms"?, "token_refresh_timeout_ms"?, "sharing_ui"?}`. `sharing_ui` keys:
 - `title`, `text`, `paused_text`;
 - `accent_color` (an ARGB number);
 - `show_pause_action`, `show_stop_action`;
@@ -92,7 +92,7 @@ A Dart or TypeScript rewrite would still need native code for all of those. It w
 
 The same four duties on Flutter and React Native, on Android and iOS:
 
-1. **`initialize(configJson)`:** build `PlatformContext` and call `TrackMeBridge.initialize`. On Android, first resolve a `sharing_ui.android_small_icon_name` to a resource id.
+1. **`start(configJson)`:** build `PlatformContext` and call `TrackMeBridge.start`. On Android, first resolve a `sharing_ui.android_small_icon_name` to a resource id.
 2. **`call(method, argsJson)`:** forward to `TrackMeBridge.call`, then answer the framework **on the main thread**.
 3. **Events:** subscribe with `TrackMeBridge.observe` while Dart or JS listens. Forward each string on the main thread, and cancel when nobody listens.
 4. **Token provider:** pass one that asks Dart or JS (Flutter: `invokeMethod("refreshToken")`; React Native: emit `refreshToken` with a request id and wait for `provideToken(id, token)`). If that side doesn't answer, return `null`; the SDK's own timeout applies.
@@ -124,8 +124,14 @@ Expo's autolinking links ordinary React Native modules as well as Expo modules, 
 ## Order of work
 
 1. ✅ **The bridge core** in the SDK, with tests. It ships in the next SDK release (0.3.0).
-2. **The packages:** Dart and TS models plus API, the four platform glues, and dev wiring to the local SDK.
+2. ✅ **The packages:** `flutter/trackme_flutter` and `react-native/trackme-react-native`. Each has typed models and API, the platform glues, and dev wiring to the local SDK (`trackme.useLocalSdk=true`, `scripts/port-ios-sdk.sh local`). The TypeScript type-checks, and the React Native spec was run through React Native's codegen, whose generated Java and Objective-C signatures match the native code. The Flutter side and all native builds are checked when the example apps build.
 3. **Sample apps** in each package's `example/`: the Live map showcase plus developer screens, ported from the native samples. They use `maplibre_gl` on Flutter and `@maplibre/maplibre-react-native` on React Native, with the same `trackme.devTools` / secrets approach.
 4. **Release:** SDK 0.3.0 → Flutter plugin 0.3.0 (pub.dev) and the React Native module 0.3.0 (npm), versioned with the SDK. Then customer-style examples that install the published packages.
+
+## Risks to check in the first example builds
+
+- **Kotlin version:** the SDK is compiled with Kotlin 2.4. A host app whose Kotlin Gradle plugin is too old to read that metadata fails to compile the plugin's Kotlin code ("incompatible version of Kotlin"). Either the app uses a recent enough Kotlin, or the SDK's Android target sets a lower `languageVersion` / `apiVersion`. That's decided when the Flutter and React Native examples first build.
+- **compileSdk 37:** the SDK requires it, so the host app's Android Gradle Plugin must support API 37.
+- **The XCFramework through CocoaPods:** the podspecs vendor `ios/Frameworks/TrackMeSDK.xcframework` (static, arm64 only), so `pod install` must find it there first.
 
 Before publishing: npm allows a proprietary licence (`"license": "UNLICENSED"`). Check how pub.dev treats a non-open-source licence before the first Flutter publish.

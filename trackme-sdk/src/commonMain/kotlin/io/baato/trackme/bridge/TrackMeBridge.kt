@@ -59,11 +59,12 @@ object TrackMeBridge {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     /**
-     * Starts an SDK session from a JSON config (see [configFrom]). Android: `PlatformContext(context)`; iOS:
-     * `PlatformContext()`. [tokenProvider]: the wrapper asks its app (Dart / JS) for a fresh token, or passes null.
-     * Returns the same JSON envelope as [call].
+     * Starts an SDK session (`TrackMe.initialize`) from a JSON config (see [configFrom]). Android:
+     * `PlatformContext(context)`; iOS: `PlatformContext()`. [tokenProvider]: the wrapper asks its app (Dart / JS) for
+     * a fresh token, or passes null. Returns the same JSON envelope as [call].
+     * Named `start`, not `initialize`: Objective-C treats `init…` selectors as initializers.
      */
-    fun initialize(context: PlatformContext, configJson: String, tokenProvider: TrackMeTokenProvider?): String =
+    fun start(context: PlatformContext, configJson: String, tokenProvider: TrackMeTokenProvider?): String =
         envelope(
             runCatching { configFrom(parseObject(configJson), tokenProvider) }
                 .fold(

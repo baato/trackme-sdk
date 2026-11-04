@@ -42,3 +42,15 @@ secring.*
 examples/ios/*.xcodeproj
 examples/ios/Secrets.xcconfig
 examples/ios/*/Info.plist
+
+# Flutter / React Native ports (docs/07-ports.md)
+flutter/**/ios/Frameworks/TrackMeSDK.xcframework
+react-native/**/ios/Frameworks/TrackMeSDK.xcframework
+flutter/**/.dart_tool/
+flutter/**/build/
+flutter/**/pubspec.lock
+flutter/**/.flutter-plugins
+flutter/**/.flutter-plugins-dependencies
+react-native/**/node_modules/
+react-native/**/package-lock.json
+react-native/**/android/build/

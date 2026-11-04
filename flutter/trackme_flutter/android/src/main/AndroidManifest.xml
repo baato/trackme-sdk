@@ -1,0 +1,3 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Permissions, the foreground service and its notification come from the TrackMe SDK's own manifest. -->
+</manifest>

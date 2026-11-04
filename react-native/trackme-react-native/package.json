@@ -1,0 +1,49 @@
+{
+  "name": "@baato/trackme-react-native",
+  "version": "0.3.0-dev",
+  "description": "Live location sharing and trip groups for React Native apps, on Baato's TrackMe. Wraps the native TrackMe SDK (Android + iOS).",
+  "license": "UNLICENSED",
+  "private": true,
+  "author": "Baato",
+  "homepage": "https://github.com/baato/trackme-sdk/tree/main/react-native/trackme-react-native",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/baato/trackme-sdk.git",
+    "directory": "react-native/trackme-react-native"
+  },
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "react-native": "src/index.ts",
+  "source": "src/index.ts",
+  "files": [
+    "src",
+    "android/build.gradle",
+    "android/src",
+    "ios",
+    "TrackMeReactNative.podspec",
+    "app.plugin.js",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "react": "*",
+    "react-native": ">=0.76"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "react": "19.1.0",
+    "react-native": "0.81.4",
+    "typescript": "^5.6.0"
+  },
+  "codegenConfig": {
+    "name": "RNTrackMeSpec",
+    "type": "modules",
+    "jsSrcsDir": "src",
+    "android": {
+      "javaPackageName": "io.baato.trackme.reactnative"
+    }
+  }
+}
