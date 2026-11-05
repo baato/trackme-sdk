@@ -1,6 +1,6 @@
 # TrackMe SDK: Integration guide
 
-For developers adding live location sharing to an **Android** or **iOS** app. Each step shows Kotlin and Swift side by side. Working examples of everything here are in `examples/android` and `examples/ios`, which use the published packages exactly as below (`sample-android/` and `sample-ios/` are the same apps built from the SDK source); [06-sample-apps.md](06-sample-apps.md) maps each SDK call to its screen.
+For developers adding live location sharing to an **Android** or **iOS** app. (**Flutter / React Native:** install the wrapper package from its README; the behaviour, options and errors below are the same, with Dart / TypeScript names. [07-ports.md](07-ports.md) explains how they map.) Each step shows Kotlin and Swift side by side. Working examples of everything here are in `examples/android` and `examples/ios`, which use the published packages exactly as below (`sample-android/` and `sample-ios/` are the same apps built from the SDK source); [06-sample-apps.md](06-sample-apps.md) maps each SDK call to its screen.
 
 ---
 
@@ -10,7 +10,7 @@ For developers adding live location sharing to an **Android** or **iOS** app. Ea
 |---|---|---|
 | Package | `com.github.baato.trackme-sdk:trackme-sdk-android` (AAR via JitPack) | SwiftPM: `TrackMeSDK` (XCFramework) + `TrackMeLiveActivity` |
 | Minimum OS | Android 7.0 (API 24) | iOS 15 (Live Activity 16.1+, interactive 17+) |
-| Build requirement | `compileSdk` ≥ 37 | Xcode 16+ |
+| Build requirement | `compileSdk` ≥ 36 (AGP 8.11+ recommended) | Xcode 16+ |
 | Entry point | `TrackMe` | `TrackMe.shared` |
 
 Features: trips (create / join by code / preview / list / detail / rename / end / leave / remove member / delete), public view links, notifications inbox, live location sharing with background support, **live updates** (members' positions, joins, trip end) over the TrackMe socket, and lifecycle and error handling that never crashes your app.
@@ -34,7 +34,7 @@ dependencyResolutionManagement {
 
 // app/build.gradle.kts
 android { compileSdk = 36 }   // or newer; Android Gradle Plugin 8.11+ recommended
-dependencies { implementation("com.github.baato.trackme-sdk:trackme-sdk-android:0.2.0") }
+dependencies { implementation("com.github.baato.trackme-sdk:trackme-sdk-android:0.3.0") }
 ```
 
 The version is the GitHub release tag. Use the `-android` artifact: it's the plain AAR. (`com.github.baato.trackme-sdk:trackme-sdk` is the Kotlin Multiplatform root, for KMP projects.)
@@ -45,7 +45,7 @@ The SDK's manifest merges in the location, foreground-service and notification p
 
 ### iOS
 
-**SwiftPM (recommended).** *File → Add Package Dependencies…* → `https://github.com/baato/trackme-sdk` → the release version (`0.2.0`, *Up to Next Major*):
+**SwiftPM (recommended).** *File → Add Package Dependencies…* → `https://github.com/baato/trackme-sdk` → the release version (`0.3.0`, *Up to Next Major*):
 - your **app** target: `TrackMeSDK` + `TrackMeLiveActivity`
 - your **Widget Extension** target (only for the Live Activity, §8): `TrackMeLiveActivity`
 
@@ -368,16 +368,18 @@ Both show **how long the trip has left**: a countdown and a bar that drains as i
   |---|---|---|
   | 17+ | Live Activity | Interactive Pause/Resume, Stop |
   | 16.1–16.x | Live Activity | Tapping opens the app |
-  | 15, or Live Activities turned off | Quiet notification | Notification actions |
+  | 15, Live Activities turned off, or no Widget Extension | Quiet notification | Notification actions |
 
   Setup (full walkthrough in `TrackMeLiveActivity/README.md`; working example in `sample-ios/`):
-  1. Add a **Widget Extension** target (deployment target 16.1 or later) that links `TrackMeLiveActivity`:
+  1. Add a **Widget Extension** target (deployment target 16.1 or later) that links `TrackMeLiveActivity`. `scripts/ios-add-widget-extension.rb` does this step and step 2 for any `.xcodeproj` (it compiles the package sources into the extension):
      ```swift
      @main struct MyWidgets: WidgetBundle { var body: some Widget { TrackMeLiveActivityWidget() } }
      ```
   2. App `Info.plist`: `NSSupportsLiveActivities = YES`.
-  3. Copy `sample-ios/TrackMeSample/LiveActivityPresenter.swift` into your app. It's about 30 lines that turn the SDK's `SharingSnapshot` into the Live Activity's content (including `tripStartedAtMillis` / `tripEndsAtMillis` for the countdown; 0 = not known yet). Call `LiveActivityPresenter.install()` once at launch. It registers the presenter, routes the Pause/Resume/Stop buttons back to `TrackMe.shared.sharing`, and sets the notification delegate for the iOS 15 fallback.
+  3. Copy `sample-ios/TrackMeSample/LiveActivityPresenter.swift` into your app. It's about 30 lines that turn the SDK's `SharingSnapshot` into the Live Activity's content (including `tripStartedAtMillis` / `tripEndsAtMillis` for the countdown; 0 = not known yet). Call `LiveActivityPresenter.install()` once at launch. It registers the presenter, routes the Pause/Resume/Stop buttons back to `TrackMe.shared.sharing`, and sets the notification delegate for the fallback, unless your app already has one: then call `TrackMeActivityController.shared.notificationDelegate.handle(response)` from yours. (The Flutter and React Native packages do this step themselves.)
   4. For the iOS 15 fallback only, call `await TrackMeActivityController.shared.requestNotificationPermission()` once, e.g. next to your location permission request.
+
+  Without a Widget Extension in the app (`TrackMeActivityController.hasWidgetExtension`), the controller shows the notification instead of requesting a Live Activity that nothing would draw.
 
   A Live Activity can only start while the app is visible, which is when sharing starts anyway. If it can't start, the notification fallback is used. Updates are throttled to state changes plus one every 15 seconds. The countdown, its bar and the "updated … ago" text are animated by iOS itself (`Text(timerInterval:)`, `ProgressView(timerInterval:)`), so they need no updates.
 

@@ -10,6 +10,7 @@ How the repo goes public on GitHub, and how a version of TrackMe gets from this 
 The version comes from `-Ptrackme.version=…` (default `0.3.0` in `trackme-sdk/build.gradle.kts`). Use the same number on both platforms.
 
 **Released:**
+- `0.3.0` (5 Nov 2026): Flutter (`trackme_flutter`, git) and React Native (`@baato/trackme-react-native`, npm) packages over a JSON bridge in the SDK; apps build with compileSdk 36 / AGP 8.x again (SDK compiled against 36, OkHttp held at 5.4.0); iOS lock screen falls back to the notification without a Widget Extension, and keeps an app's own notification delegate.
 - `0.2.0` (3 Nov 2026): trip countdown in the notification / Live Activity, sharing-state reporting (`MemberSharingChanged`, ready for the backend), server-owned duration / list limits, iOS main-thread fix, compact Live Activity.
 - `0.1.0` (2 Nov 2026): first release. SwiftPM release with `TrackMeSDK.xcframework.zip`, JitPack build green. Check each release with the apps in `examples/`, which install the published packages.
 

@@ -1,6 +1,6 @@
 # Flutter and React Native ports
 
-**Status:** in progress on the `ports` branch. Steps 1 and 2 (the bridge core and both packages) run on Android and iOS for both frameworks. Step 3, the Live map showcase plus a developer screen in each example, is written and being tried on devices.
+**Status:** released in **0.3.0** (5 Nov 2026). Both packages and their examples run on Android and iOS, including the iOS lock screen.
 
 ## The approach: wrap the KMP SDK, don't rewrite it
 

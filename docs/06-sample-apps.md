@@ -7,6 +7,8 @@ Both samples (`sample-android/`, Compose; `sample-ios/`, SwiftUI) have two faces
 
 The same two apps also live in `examples/android` and `examples/ios`, built against the **published** SDK (JitPack / SwiftPM) instead of the source; `scripts/sync-examples.sh` copies the code across. Everything below applies to both; for the examples, the secrets files are `examples/android/local.properties` and `examples/ios/Secrets.xcconfig`.
 
+The Flutter and React Native packages have the same Live map in their `example/` (one developer screen instead of five sections): `flutter/trackme_flutter/example` (`lib/app_model.dart`, secrets in `secrets.json`) and `react-native/trackme-react-native/example` (`src/store.ts`, secrets in `src/secrets.ts`). How to run them: [07-ports.md](07-ports.md).
+
 All SDK calls go through one file per app: `SampleViewModel.kt` on Android, `SampleModel.swift` on iOS. Read those first; the screens only call into them.
 
 ## Setup: secrets and the dev-tools flag
