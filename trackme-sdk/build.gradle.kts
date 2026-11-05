@@ -9,8 +9,8 @@ plugins {
 }
 
 group = "io.baato.trackme"
-// Release with: ./gradlew :trackme-sdk:publish -Ptrackme.version=0.2.0  (see docs/05-releasing.md)
-version = providers.gradleProperty("trackme.version").getOrElse("0.2.0")
+// Release with: ./gradlew :trackme-sdk:publish -Ptrackme.version=0.3.0  (see docs/05-releasing.md)
+version = providers.gradleProperty("trackme.version").getOrElse("0.3.0")
 
 kotlin {
     // expect/actual *classes* (PlatformContext) are Beta; opt in to silence the warning.
@@ -21,7 +21,7 @@ kotlin {
     // ---------- Android target ----------
     android {
         namespace = "io.baato.trackme"
-        compileSdk = libs.versions.android.compileSdk.get().toInt()
+        compileSdk = libs.versions.android.sdkCompileSdk.get().toInt()   // host apps need this or newer
         minSdk = libs.versions.android.minSdk.get().toInt()
 
         // Host (JVM) unit tests are opt-in with the new plugin; this makes commonTest run on Android too.
@@ -59,6 +59,9 @@ kotlin {
         }
         androidMain.dependencies {
             implementation(libs.ktor.client.okhttp)   // Android HTTP engine
+            // Strict, so Ktor can't lift it to an OkHttp that needs compileSdk 37. An app can still choose its own
+            // OkHttp with a strict version of its own.
+            implementation("com.squareup.okhttp3:okhttp") { version { strictly(libs.versions.okhttp.get()) } }
             implementation(libs.androidx.core)        // LocationManagerCompat, NotificationCompat, ServiceCompat
         }
         iosMain.dependencies {

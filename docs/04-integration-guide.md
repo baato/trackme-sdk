@@ -33,7 +33,7 @@ dependencyResolutionManagement {
 }
 
 // app/build.gradle.kts
-android { compileSdk = 37 }
+android { compileSdk = 36 }   // or newer; Android Gradle Plugin 8.11+ recommended
 dependencies { implementation("com.github.baato.trackme-sdk:trackme-sdk-android:0.2.0") }
 ```
 
@@ -419,7 +419,7 @@ In Kotlin, a `when (event)` over `TrackMeEvent` should end with `else -> Unit` s
 
 - [ ] The token comes from **your backend**; no API secret in the app
 - [ ] `initialize` after sign-in, `dispose` on sign-out
-- [ ] Android: `compileSdk` 37, runtime location request (+ `POST_NOTIFICATIONS`), Play Console foreground-service declaration
+- [ ] Android: `compileSdk` 36+ (Android Gradle Plugin 8.11+ recommended), runtime location request (+ `POST_NOTIFICATIONS`), Play Console foreground-service declaration
 - [ ] Android, optional: `ACCESS_BACKGROUND_LOCATION` in your manifest, requested separately
 - [ ] iOS: location usage strings, `UIBackgroundModes = location` for background sharing
 - [ ] iOS: Widget Extension with `TrackMeLiveActivityWidget()`, `NSSupportsLiveActivities = YES`, `LiveActivityPresenter.install()` at launch

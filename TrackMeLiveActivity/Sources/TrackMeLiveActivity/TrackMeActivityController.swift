@@ -41,13 +41,25 @@ public final class TrackMeActivityController {
         current = content
         lastPushed = .distantPast
         #if canImport(ActivityKit)
-        if #available(iOS 16.1, *), ActivityAuthorizationInfo().areActivitiesEnabled {
+        if #available(iOS 16.1, *), Self.hasWidgetExtension, ActivityAuthorizationInfo().areActivitiesEnabled {
             startActivity(content)
             return
         }
         #endif
         if useNotificationFallback { showNotification(content) }
     }
+
+    /// Whether the app has a Widget Extension to draw the Live Activity. Without one, iOS may accept the request
+    /// and show nothing, so the controller uses the notification instead.
+    public nonisolated static let hasWidgetExtension: Bool = {
+        guard let plugIns = Bundle.main.builtInPlugInsURL,
+              let items = try? FileManager.default.contentsOfDirectory(at: plugIns, includingPropertiesForKeys: nil) else { return false }
+        return items.contains { appex in
+            guard appex.pathExtension == "appex",
+                  let ext = Bundle(url: appex)?.object(forInfoDictionaryKey: "NSExtension") as? [String: Any] else { return false }
+            return ext["NSExtensionPointIdentifier"] as? String == "com.apple.widgetkit-extension"
+        }
+    }()
 
     public func update(_ content: TrackMeActivityContent) {
         guard let previous = current else { start(content); return }

@@ -1,0 +1,24 @@
+TrackMe SDK - Source-Available License (DRAFT: have Baato's legal counsel review before publishing)
+
+Copyright (c) 2026 Baato. All rights reserved.
+
+The source code in this repository is made available for viewing, evaluation and security review only.
+
+1. Permitted use. You may read the source code, build it, and run the included sample apps for evaluation.
+   You may use the published binaries (the Android library and the iOS framework/package) in your own
+   applications only under a separate written agreement with Baato, or under the terms that accompany your
+   Baato TrackMe API account.
+
+2. Restrictions. Without Baato's prior written permission you may not: copy, modify, merge, publish,
+   distribute, sublicense or sell the source code or any derivative of it; or use the source code to build
+   a competing product or service.
+
+3. Contributions. Any contribution you submit (e.g. a pull request) is licensed to Baato under terms that
+   allow Baato to use, modify and distribute it without restriction.
+
+4. No warranty. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED. IN NO
+   EVENT SHALL BAATO BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY ARISING FROM THE SOFTWARE OR ITS USE.
+
+Third-party components (Kotlin, kotlinx, Ktor, AndroidX, MapLibre and others) remain under their own licenses.
+
+Contact: <sdk-licensing contact at Baato>

@@ -1,0 +1,57 @@
+// Android side of @baato/trackme-react-native: a Turbo Module that passes strings to TrackMeBridge in the
+// native TrackMe SDK.
+
+// The TrackMe SDK version this module wraps. Development against this repo's SDK source:
+//   ./gradlew :trackme-sdk:publishToMavenLocal -Ptrackme.version=0.3.0   (repo root)
+// and `trackme.useLocalSdk=true` in the app's android/gradle.properties.
+def trackmeSdkVersion = "0.3.0"
+def useLocalSdk = (rootProject.findProperty("trackme.useLocalSdk") ?: "false").toString().toBoolean()
+
+// No buildscript: the host app supplies the Android and Kotlin Gradle plugins (and their versions).
+
+// The app resolves this module's dependencies with its own repositories, so they're added there; JitPack only
+// for the TrackMe group.
+rootProject.allprojects {
+    repositories {
+        maven {
+            url = uri("https://jitpack.io")
+            content { includeGroup("com.github.baato.trackme-sdk") }
+        }
+        mavenLocal {
+            content { includeGroup("io.baato.trackme") }
+        }
+    }
+}
+
+apply plugin: "com.android.library"
+apply plugin: "kotlin-android"
+apply plugin: "com.facebook.react"   // runs codegen for src/NativeTrackMe.ts
+
+android {
+    namespace = "io.baato.trackme.reactnative"
+    compileSdk = 36   // the TrackMe SDK needs 36+, the newest AGP 8.x knows
+
+    defaultConfig {
+        minSdk = 24
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+    sourceSets {
+        main.java.srcDirs += ["src/main/kotlin"]
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+    }
+}
+
+dependencies {
+    implementation("com.facebook.react:react-android")
+    implementation(useLocalSdk
+        ? "io.baato.trackme:trackme-sdk-android:$trackmeSdkVersion"
+        : "com.github.baato.trackme-sdk:trackme-sdk-android:$trackmeSdkVersion")
+}

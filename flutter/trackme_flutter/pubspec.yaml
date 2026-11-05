@@ -1,0 +1,29 @@
+name: trackme_flutter
+description: Live location sharing and trip groups for Flutter apps, on Baato's TrackMe. Wraps the native TrackMe SDK (Android + iOS).
+version: 0.3.0
+homepage: https://github.com/baato/trackme-sdk
+repository: https://github.com/baato/trackme-sdk/tree/main/flutter/trackme_flutter
+# Installed from git (see README): pub.dev only takes open-source licences, and TrackMe's isn't.
+publish_to: none
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+  flutter: ">=3.22.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: io.baato.trackme.flutter
+        pluginClass: TrackmeFlutterPlugin
+      ios:
+        pluginClass: TrackmeFlutterPlugin

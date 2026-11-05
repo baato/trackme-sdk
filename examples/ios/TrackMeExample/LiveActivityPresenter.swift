@@ -60,7 +60,10 @@ final class LiveActivityPresenter: NSObject, TrackMeSharingPresenter {
             case .stop: _ = TrackMe.shared.sharing.stop()
             }
         }
-        // Fallback notification (iOS 15 / Live Activities off) delivers its button taps here.
-        UNUserNotificationCenter.current().delegate = TrackMeActivityController.shared.notificationDelegate
+        // Fallback notification (iOS 15, Live Activities off, or no Widget Extension) delivers its button taps here.
+        // An app with its own notification delegate keeps it, and calls notificationDelegate.handle(response) from it.
+        if UNUserNotificationCenter.current().delegate == nil {
+            UNUserNotificationCenter.current().delegate = TrackMeActivityController.shared.notificationDelegate
+        }
     }
 }

@@ -5,9 +5,12 @@
 kotlin = "2.4.20"
 agp = "9.4.0"   # needs Android Studio Quail 4+ / Rabbit
 ktor = "3.6.0"
+# OkHttp under Ktor's Android engine, held below Ktor 3.6.0's 5.5.0: OkHttp 5.4.0's AAR asks apps for compileSdk 36,
+# 5.5.0+ asks for 37 (scripts/check-aar-metadata.sh prints this). Raise it only together with android-sdkCompileSdk.
+okhttp = "5.4.0"
 coroutines = "1.11.0"
 serialization = "1.11.0"
-androidx-core = "1.19.1"
+androidx-core = "1.16.0"   # 1.17+ needs newer AGP / compileSdk than many host apps have; keep it low
 
 # Sample app only
 compose-bom = "2026.09.00"
@@ -16,8 +19,11 @@ lifecycle = "2.11.0"
 maplibre = "13.5.2"
 android-targetSdk = "36"
 
-# Android target settings for the SDK
-android-compileSdk = "37"
+# Android target settings
+android-compileSdk = "37"      # the sample app
+# The SDK compiles against 36: its AAR then asks host apps for compileSdk 36+, which AGP 8.x apps (Flutter,
+# React Native, many native apps) can use. Raising it raises that floor for every customer.
+android-sdkCompileSdk = "36"
 android-minSdk = "24"
 
 [libraries]

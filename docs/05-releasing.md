@@ -7,7 +7,7 @@ How the repo goes public on GitHub, and how a version of TrackMe gets from this 
 | Android | JitPack (current): `com.github.baato.trackme-sdk:trackme-sdk-android:<tag>`, built from the git tag. Own group `io.baato.trackme` if moved to Maven Central or a Baato repository | `implementation("com.github.baato.trackme-sdk:trackme-sdk-android:<tag>")` with `maven("https://jitpack.io")` |
 | iOS | `TrackMeSDK.xcframework` (static, device + Apple-silicon simulator) and the `TrackMeLiveActivity` Swift package | SwiftPM: the repo's git URL and a version tag |
 
-The version comes from `-Ptrackme.version=…` (default `0.2.0` in `trackme-sdk/build.gradle.kts`). Use the same number on both platforms.
+The version comes from `-Ptrackme.version=…` (default `0.3.0` in `trackme-sdk/build.gradle.kts`). Use the same number on both platforms.
 
 **Released:**
 - `0.2.0` (3 Nov 2026): trip countdown in the notification / Live Activity, sharing-state reporting (`MemberSharingChanged`, ready for the backend), server-owned duration / list limits, iOS main-thread fix, compact Live Activity.
@@ -217,9 +217,30 @@ Apps add **one git URL** (`https://github.com/baato/trackme-sdk`) and get two pr
 
 ---
 
-## 8. Release checklist
+## 8. Flutter and React Native packages (from 0.3.0)
+
+Both wrap the SDK release of the **same version**, so they're released right after it, from the same tag.
+
+| Package | Where | How apps add it |
+|---|---|---|
+| `trackme_flutter` | Git, this repo (pub.dev only accepts open-source licences) | `trackme_flutter: { git: { url: https://github.com/baato/trackme-sdk.git, path: flutter/trackme_flutter, ref: <version> } }` |
+| `@baato/trackme-react-native` | npm (`"license": "UNLICENSED"` is allowed), scope `@baato` | `npm install @baato/trackme-react-native` |
+
+- **Android:** both pull `com.github.baato.trackme-sdk:trackme-sdk-android:<version>` from JitPack (they add the repository, limited to that group).
+- **iOS:** the podspecs name the SDK version and the zip's SHA-256. On the first `pod install` they download the release's `TrackMeSDK.xcframework.zip` and check it. `scripts/release-ios.sh` writes both values, so the tag already carries them. The lock-screen code (`ios/LiveActivity/`) is committed.
+
+Steps, after section 7 (the release commit then also contains the two podspecs):
+1. Set `version` in `flutter/trackme_flutter/pubspec.yaml` and `react-native/trackme-react-native/package.json`, and `trackmeSdkVersion` in both `android/build.gradle`, to `<version>`. Run `scripts/port-ios-sdk.sh local` once if `TrackMeLiveActivity` changed.
+2. After the tag is pushed and the zip is uploaded, check the download: in each example, delete `ios/Frameworks/TrackMeSDK.version` in the package, set `trackme.useLocalSdk=false`, then `pod install` and build.
+3. npm, from `react-native/trackme-react-native`: `npm pack --dry-run` (no `TrackMeSDK.xcframework` in the list), then `npm login` and `npm publish`. The `@baato` organisation must exist on npmjs.com first.
+4. Flutter: nothing to upload. Add the git dependency to a fresh `flutter create` app with `ref: <version>` and build it on both platforms.
+
+---
+
+## 9. Release checklist
 
 1. Section 5 passes, and the integration guide is up to date.
 2. Android: publish `<version>` (section 6) and check it resolves in a fresh app.
 3. iOS: run the script, commit `Package.swift`, tag `<version>`, push, upload the zip to the GitHub release (section 7), then add the package in a fresh Xcode project.
-4. Add release notes on the GitHub release: what changed, and anything breaking.
+4. Flutter and React Native: section 8.
+5. Add release notes on the GitHub release: what changed, and anything breaking.
