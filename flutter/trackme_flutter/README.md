@@ -9,7 +9,7 @@ dependencies:
     git:
       url: https://github.com/baato/trackme-sdk.git
       path: flutter/trackme_flutter
-      ref: 0.3.0
+      ref: 0.3.1
 ```
 The iOS pod downloads the matching `TrackMeSDK.xcframework` on the first `pod install`.
 
@@ -43,7 +43,7 @@ Every call throws `TrackMeException` (`type`, `message`) on failure. The whole A
 ## Developing against this repo's SDK
 
 ```bash
-./gradlew :trackme-sdk:publishToMavenLocal -Ptrackme.version=0.3.0   # Android: SDK into ~/.m2
+./gradlew :trackme-sdk:publishToMavenLocal -Ptrackme.version=0.3.1   # Android: SDK into ~/.m2
 scripts/port-ios-sdk.sh local                                         # iOS: SDK into ios/Frameworks/ (+ ios/LiveActivity/)
 ```
 Then set `trackme.useLocalSdk=true` in the app's `android/gradle.properties`.

@@ -34,7 +34,7 @@ The project doubles as a step-by-step KMP walkthrough:
 | `scripts/ios-add-widget-extension.rb` | adds the Live Activity Widget Extension to any iOS app project |
 | `scripts/check-aar-metadata.sh` | prints the compileSdk each OkHttp release asks of apps |
 
-## Install (0.3.0)
+## Install (0.3.1)
 
 **Android** (JitPack):
 
@@ -47,16 +47,16 @@ dependencyResolutionManagement {
     }
 }
 // app/build.gradle.kts  (compileSdk 36+, minSdk 24 (Android Gradle Plugin 8.11+ recommended; older 8.x builds with a warning))
-dependencies { implementation("com.github.baato.trackme-sdk:trackme-sdk-android:0.3.0") }
+dependencies { implementation("com.github.baato.trackme-sdk:trackme-sdk-android:0.3.1") }
 ```
 
-**iOS** (SwiftPM): *File → Add Package Dependencies…* → `https://github.com/baato/trackme-sdk` → `0.3.0`, then add `TrackMeSDK` (and `TrackMeLiveActivity` for the Live Activity) to your app.
+**iOS** (SwiftPM): *File → Add Package Dependencies…* → `https://github.com/baato/trackme-sdk` → `0.3.1`, then add `TrackMeSDK` (and `TrackMeLiveActivity` for the Live Activity) to your app.
 
 **Flutter** (git; pub.dev only takes open-source licences):
 
 ```yaml
 trackme_flutter:
-  git: { url: https://github.com/baato/trackme-sdk.git, path: flutter/trackme_flutter, ref: 0.3.0 }
+  git: { url: https://github.com/baato/trackme-sdk.git, path: flutter/trackme_flutter, ref: 0.3.1 }
 ```
 
 **React Native** (0.76+, new architecture; Expo development builds too): `npm install @baato/trackme-react-native`

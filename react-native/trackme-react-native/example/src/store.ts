@@ -235,7 +235,11 @@ class Store {
   /** dispose(): stops sharing, removes the notification, closes the socket and HTTP. Safe to call twice. */
   logOut = async () => {
     await TrackMe.dispose().catch(() => undefined);
-    this.set({ ...initial, log: this.state.log, lifecycle: this.state.lifecycle, sharing: this.state.sharing, realtime: this.state.realtime });
+    // Replace the state, don't merge into it: optional fields such as login aren't in `initial`, so a merge
+    // would keep them (and the app would stay on the map).
+    const { log, lifecycle, sharing, realtime } = this.state;
+    this.state = { ...initial, mapLoadedAt: Date.now(), log, lifecycle, sharing, realtime };
+    this.listeners.forEach((l) => l());
     this.log('Disposed');
   };
 

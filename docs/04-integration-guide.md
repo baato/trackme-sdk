@@ -34,7 +34,7 @@ dependencyResolutionManagement {
 
 // app/build.gradle.kts
 android { compileSdk = 36 }   // or newer; Android Gradle Plugin 8.11+ recommended
-dependencies { implementation("com.github.baato.trackme-sdk:trackme-sdk-android:0.3.0") }
+dependencies { implementation("com.github.baato.trackme-sdk:trackme-sdk-android:0.3.1") }
 ```
 
 The version is the GitHub release tag. Use the `-android` artifact: it's the plain AAR. (`com.github.baato.trackme-sdk:trackme-sdk` is the Kotlin Multiplatform root, for KMP projects.)
@@ -45,7 +45,7 @@ The SDK's manifest merges in the location, foreground-service and notification p
 
 ### iOS
 
-**SwiftPM (recommended).** *File → Add Package Dependencies…* → `https://github.com/baato/trackme-sdk` → the release version (`0.3.0`, *Up to Next Major*):
+**SwiftPM (recommended).** *File → Add Package Dependencies…* → `https://github.com/baato/trackme-sdk` → the release version (`0.3.1`, *Up to Next Major*):
 - your **app** target: `TrackMeSDK` + `TrackMeLiveActivity`
 - your **Widget Extension** target (only for the Live Activity, §8): `TrackMeLiveActivity`
 

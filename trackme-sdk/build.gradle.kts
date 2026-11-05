@@ -9,8 +9,8 @@ plugins {
 }
 
 group = "io.baato.trackme"
-// Release with: ./gradlew :trackme-sdk:publish -Ptrackme.version=0.3.0  (see docs/05-releasing.md)
-version = providers.gradleProperty("trackme.version").getOrElse("0.3.0")
+// Release with: ./gradlew :trackme-sdk:publish -Ptrackme.version=0.3.1  (see docs/05-releasing.md)
+version = providers.gradleProperty("trackme.version").getOrElse("0.3.1")
 
 kotlin {
     // expect/actual *classes* (PlatformContext) are Beta; opt in to silence the warning.
@@ -58,10 +58,14 @@ kotlin {
             implementation(libs.kotlinx.serialization.json)
         }
         androidMain.dependencies {
-            implementation(libs.ktor.client.okhttp)   // Android HTTP engine
-            // Strict, so Ktor can't lift it to an OkHttp that needs compileSdk 37. An app can still choose its own
-            // OkHttp with a strict version of its own.
-            implementation("com.squareup.okhttp3:okhttp") { version { strictly(libs.versions.okhttp.get()) } }
+            // Android HTTP engine. Its own OkHttp (5.5+) asks apps for compileSdk 37, so it's excluded and replaced
+            // by the one below. An exclusion, unlike a strict version, is written into the POM: JitPack serves apps
+            // the POM, and there Gradle would otherwise pick Ktor's newer OkHttp. An app can still choose a newer one.
+            implementation("io.ktor:ktor-client-okhttp:${libs.versions.ktor.get()}") {
+                exclude(group = "com.squareup.okhttp3", module = "okhttp")
+                exclude(group = "com.squareup.okhttp3", module = "okhttp-android")
+            }
+            implementation("com.squareup.okhttp3:okhttp:${libs.versions.okhttp.get()}")
             implementation(libs.androidx.core)        // LocationManagerCompat, NotificationCompat, ServiceCompat
         }
         iosMain.dependencies {
@@ -108,6 +112,17 @@ publishing {
                 url.set(repoUrl)
                 connection.set("scm:git:$repoUrl.git")
                 developerConnection.set("scm:git:$repoUrl.git")
+            }
+        }
+        // The Android POM names OkHttp's Android artifact (okhttp-android). An app that also has OkHttp under its
+        // plain name, like React Native's okhttp 4.x, would then get both and fail on duplicate classes. Under its
+        // plain name Gradle sees one library, picks one version (ours, 5.4.0, over 4.x) and still delivers the
+        // Android build. This matters wherever apps read the POM, like JitPack; the Gradle metadata already does this.
+        pom.withXml {
+            val ids = asElement().getElementsByTagName("artifactId")
+            for (i in 0 until ids.length) {
+                val id = ids.item(i)
+                if (id.textContent == "okhttp-android" && id.parentNode.nodeName == "dependency") id.textContent = "okhttp"
             }
         }
     }

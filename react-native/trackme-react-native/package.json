@@ -1,6 +1,6 @@
 {
   "name": "@baato/trackme-react-native",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Live location sharing and trip groups for React Native apps, on Baato's TrackMe. Wraps the native TrackMe SDK (Android + iOS).",
   "license": "UNLICENSED",
   "author": "Baato",
