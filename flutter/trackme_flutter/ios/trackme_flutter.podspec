@@ -6,7 +6,7 @@ require 'tmpdir'
 # against its SHA-256 (the same zip and checksum as the SwiftPM release). scripts/release-ios.sh writes both values.
 # In this repo, `scripts/port-ios-sdk.sh local` puts a development build there instead (marker "local").
 trackme_sdk_version = '0.3.0'
-trackme_sdk_sha256 = 'pending'
+trackme_sdk_sha256 = '8908ed67fdf4d004a725742faaac8d118c13c6de55b5d6dcebbedc269ee51e2a'
 frameworks = File.join(__dir__, 'Frameworks')
 marker = File.join(frameworks, 'TrackMeSDK.version')
 installed = File.exist?(marker) ? File.read(marker).strip : nil
