@@ -53,12 +53,17 @@ class TrackMeSharingUi {
     this.androidSmallIcon,
     this.androidChannelName,
     this.iosSymbolName,
+    this.iosLiveActivity,
   });
 
   final String? title, text, pausedText, pauseLabel, resumeLabel, stopLabel;
   final int? accentColor;
   final bool? showPauseAction, showStopAction;
   final String? androidSmallIcon, androidChannelName, iosSymbolName;
+
+  /// iOS lock screen while sharing (default true): a Live Activity when the app has the Widget Extension
+  /// (docs/07-ports.md), otherwise a notification with Pause / Resume / Stop. False: the app shows its own.
+  final bool? iosLiveActivity;
 
   Map<String, Object?> toJson() => {
         if (title != null) 'title': title,
@@ -73,6 +78,7 @@ class TrackMeSharingUi {
         if (androidSmallIcon != null) 'android_small_icon_name': androidSmallIcon, // resolved to an id natively
         if (androidChannelName != null) 'android_channel_name': androidChannelName,
         if (iosSymbolName != null) 'ios_symbol_name': iosSymbolName,
+        if (iosLiveActivity != null) 'ios_live_activity': iosLiveActivity,
       };
 }
 

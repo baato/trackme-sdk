@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Puts TrackMeSDK.xcframework into the Flutter plugin and the React Native module (their ios/Frameworks/,
-# git-ignored). Their podspecs vendor it from there.
+# git-ignored). Their podspecs vendor it from there; without it, `pod install` downloads the release the podspec names.
+# Also refreshes the iOS lock-screen code in their ios/LiveActivity/ (committed, so git and npm installs have it): the
+# TrackMeLiveActivity package sources and the native sample's LiveActivityPresenter. Run it after changing either.
 #
 #   scripts/port-ios-sdk.sh local    # development: this repo's SDK build (builds it first)
 #   scripts/port-ios-sdk.sh 0.3.0    # publishing: the released zip from GitHub, checked against that tag's Package.swift
@@ -29,6 +31,15 @@ for t in "${targets[@]}"; do
   mkdir -p "$t"
   rm -rf "$t/TrackMeSDK.xcframework"
   cp -R "$framework" "$t/"
+  echo "$source" > "$t/TrackMeSDK.version"   # the podspec downloads nothing while this matches
   echo "✔ $t/TrackMeSDK.xcframework ($source)"
+
+  live="$(dirname "$t")/LiveActivity"
+  rm -rf "$live"
+  mkdir -p "$live"
+  cp TrackMeLiveActivity/Sources/TrackMeLiveActivity/*.swift sample-ios/TrackMeSample/LiveActivityPresenter.swift "$live/"
+  # One module here: the package's own import of itself goes.
+  sed -i '' '/^import TrackMeLiveActivity$/d' "$live/LiveActivityPresenter.swift"
+  echo "✔ $live (TrackMeLiveActivity + LiveActivityPresenter)"
 done
 echo "Next: pod install in the example app(s)."

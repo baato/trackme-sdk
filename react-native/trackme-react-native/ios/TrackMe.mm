@@ -2,6 +2,8 @@
 // pass-through to TrackMeBridge in the TrackMe SDK (docs/07-ports.md).
 #import <React/RCTEventEmitter.h>
 #import <RNTrackMeSpec/RNTrackMeSpec.h>
+// The generated Swift header names UserNotifications types (the lock-screen notification delegate) without importing them.
+#import <UserNotifications/UserNotifications.h>
 #import "TrackMeReactNative-Swift.h"
 
 @interface TrackMe : RCTEventEmitter <NativeTrackMeSpec>

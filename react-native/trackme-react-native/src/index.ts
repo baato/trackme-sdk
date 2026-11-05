@@ -53,6 +53,11 @@ export interface TrackMeSharingUi {
   androidChannelName?: string;
   /** SF Symbol shown in the Live Activity. */
   iosSymbolName?: string;
+  /**
+   * iOS lock screen while sharing (default true): a Live Activity when the app has the Widget Extension
+   * (docs/07-ports.md), otherwise a notification with Pause / Resume / Stop. False: the app shows its own.
+   */
+  iosLiveActivity?: boolean;
 }
 
 /** Everything the app supplies to `TrackMe.initialize`. Your backend gets the access token; the SDK never logs in. */
@@ -89,6 +94,7 @@ const configJson = (c: TrackMeConfig) =>
             android_small_icon_name: c.sharingUi.androidSmallIcon, // resolved to an id natively
             android_channel_name: c.sharingUi.androidChannelName,
             ios_symbol_name: c.sharingUi.iosSymbolName,
+            ios_live_activity: c.sharingUi.iosLiveActivity,
           })
         : undefined,
     }),
@@ -117,8 +123,9 @@ let nativeSubscription: { remove(): void } | undefined;
 const listen = (l: Listener) => {
   listeners.add(l);
   if (!nativeSubscription) {
-    nativeSubscription = emitter.addListener('TrackMeEvent', (body: { json: string }) => {
-      const e = JSON.parse(body.json) as Envelope;
+    // Listener bodies are untyped in NativeEventEmitter (strictly so since RN 0.88): cast what native sends.
+    nativeSubscription = emitter.addListener('TrackMeEvent', (body: unknown) => {
+      const e = JSON.parse((body as { json: string }).json) as Envelope;
       listeners.forEach((fn) => fn(e));
     });
   }
@@ -151,14 +158,15 @@ export const TrackMe = {
   async initialize(config: TrackMeConfig, options: { tokenProvider?: () => Promise<string | null> } = {}): Promise<void> {
     tokenProvider = options.tokenProvider;
     if (tokenProvider && !tokenSubscription) {
-      tokenSubscription = emitter.addListener('TrackMeRefreshToken', async (body: { requestId: number }) => {
+      tokenSubscription = emitter.addListener('TrackMeRefreshToken', async (body: unknown) => {
+        const { requestId } = body as { requestId: number };
         let token: string | null = null;
         try {
           token = (await tokenProvider?.()) ?? null;
         } catch {
           token = null;
         }
-        Native.provideToken(body.requestId, token);
+        Native.provideToken(requestId, token);
       });
     }
     unwrap(await Native.start(configJson(config), tokenProvider != null));

@@ -23,9 +23,10 @@ public final class TrackmeFlutterPlugin: NSObject, FlutterPlugin, FlutterStreamH
         switch call.method {
         case "start":
             let provider: TrackMeTokenProvider? = (args["hasTokenProvider"] as? Bool ?? false) ? DartTokenProvider(plugin: self) : nil
-            result(TrackMeBridge.shared.start(context: PlatformContext(),
-                                              configJson: args["config"] as? String ?? "{}",
-                                              tokenProvider: provider))
+            let config = args["config"] as? String ?? "{}"
+            // Sharing on the lock screen: the Live Activity (with a Widget Extension) or the notification.
+            if LiveActivityPresenter.wanted(configJson: config) { Task { @MainActor in LiveActivityPresenter.install() } }
+            result(TrackMeBridge.shared.start(context: PlatformContext(), configJson: config, tokenProvider: provider))
         case "call":
             TrackMeBridge.shared.call(method: args["method"] as? String ?? "", argsJson: args["args"] as? String ?? "{}") { envelope in
                 DispatchQueue.main.async { result(envelope) }
@@ -70,5 +71,16 @@ private final class DartTokenProvider: NSObject, TrackMeTokenProvider {
     func refreshToken(onResult: @escaping (String?) -> Void) {
         guard let plugin else { onResult(nil); return }
         plugin.askDartForToken(onResult)
+    }
+}
+
+/// `sharing_ui.ios_live_activity`: false = the app shows its own lock-screen UI. Anything else = ours.
+/// (LiveActivityPresenter is the native sample's, copied into this package by scripts/port-ios-sdk.sh.)
+extension LiveActivityPresenter {
+    static func wanted(configJson: String) -> Bool {
+        guard let data = configJson.data(using: .utf8),
+              let config = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let ui = config["sharing_ui"] as? [String: Any] else { return true }
+        return ui["ios_live_activity"] as? Bool ?? true
     }
 }

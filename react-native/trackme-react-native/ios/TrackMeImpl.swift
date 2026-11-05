@@ -18,6 +18,8 @@ public final class TrackMeImpl: NSObject {
 
     @objc public func start(_ configJson: String, hasTokenProvider: Bool) -> String {
         let provider: TrackMeTokenProvider? = hasTokenProvider ? JsTokenProvider(impl: self) : nil
+        // Sharing on the lock screen: the Live Activity (with a Widget Extension) or the notification.
+        if LiveActivityPresenter.wanted(configJson: configJson) { Task { @MainActor in LiveActivityPresenter.install() } }
         return TrackMeBridge.shared.start(context: PlatformContext(), configJson: configJson, tokenProvider: provider)
     }
 
@@ -72,5 +74,16 @@ private final class JsTokenProvider: NSObject, TrackMeTokenProvider {
     func refreshToken(onResult: @escaping (String?) -> Void) {
         guard let impl else { onResult(nil); return }
         impl.askJsForToken(onResult)
+    }
+}
+
+/// `sharing_ui.ios_live_activity`: false = the app shows its own lock-screen UI. Anything else = ours.
+/// (LiveActivityPresenter is the native sample's, copied into this package by scripts/port-ios-sdk.sh.)
+extension LiveActivityPresenter {
+    static func wanted(configJson: String) -> Bool {
+        guard let data = configJson.data(using: .utf8),
+              let config = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let ui = config["sharing_ui"] as? [String: Any] else { return true }
+        return ui["ios_live_activity"] as? Bool ?? true
     }
 }

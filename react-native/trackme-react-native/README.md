@@ -2,7 +2,7 @@
 
 Live location sharing and trip groups for React Native, on Baato's TrackMe. It wraps the native TrackMe SDK as a Turbo Module, so behaviour matches the Android and iOS SDKs exactly. Sharing (the background service, the notification's Pause/Stop, the Live Activity) runs natively, even while JS isn't.
 
-**Status:** development (`ports` branch). Not on npm yet. Requires React Native 0.76+ (the new architecture).
+**Install:** `npm install @baato/trackme-react-native` (React Native 0.76+, the new architecture), then `cd ios && pod install`. The iOS pod downloads the matching `TrackMeSDK.xcframework` on the first `pod install`.
 
 ```ts
 import TrackMe from '@baato/trackme-react-native';
@@ -27,13 +27,14 @@ Every call rejects with a `TrackMeError` (`type`, `message`). The whole API is i
 
 - **Expo:** add the plugin in `app.json`, `"plugins": ["@baato/trackme-react-native"]`, then use a development build (not Expo Go). The plugin writes the iOS location strings, background mode and Live Activity flag.
 - **Bare React Native, iOS:** add the same `Info.plist` keys yourself: `NSLocationWhenInUseUsageDescription`, `NSLocationAlwaysAndWhenInUseUsageDescription`, `UIBackgroundModes` → `location`.
-- **Android:** `compileSdk 37`, `minSdk 24`. The module adds JitPack, limited to the TrackMe group, to your build's repositories.
+- **iOS lock screen:** while sharing, a notification with Pause / Resume / Stop shows with no setup (ask for notification permission). For the Live Activity (lock screen + Dynamic Island), add the Widget Extension: `ruby scripts/ios-add-widget-extension.rb ios/<App>.xcodeproj <App> <TrackMeLiveActivity sources>` ([docs/07-ports.md](../../docs/07-ports.md)). `sharingUi: { iosLiveActivity: false }` turns both off.
+- **Android:** `compileSdk 36`+, `minSdk 24`, Android Gradle Plugin 8.11+ recommended (older 8.x builds with a warning). The module adds JitPack, limited to the TrackMe group, to your build's repositories.
 
 ## Developing against this repo's SDK
 
 ```bash
 ./gradlew :trackme-sdk:publishToMavenLocal -Ptrackme.version=0.3.0   # Android: SDK into ~/.m2
-scripts/port-ios-sdk.sh local                                         # iOS: SDK into ios/Frameworks/
+scripts/port-ios-sdk.sh local                                         # iOS: SDK into ios/Frameworks/ (+ ios/LiveActivity/)
 ```
 Then set `trackme.useLocalSdk=true` in the app's `android/gradle.properties`. `npm run typecheck` checks the TypeScript.
 

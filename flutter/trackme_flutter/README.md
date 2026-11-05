@@ -2,7 +2,16 @@
 
 Live location sharing and trip groups for Flutter, on Baato's TrackMe. It wraps the native TrackMe SDK, so behaviour matches the Android and iOS SDKs exactly. Sharing (the background service, the notification's Pause/Stop, the Live Activity) runs natively, even while the Flutter engine isn't.
 
-**Status:** development (`ports` branch). Not on pub.dev yet.
+**Install** (from git: pub.dev only takes open-source licences):
+```yaml
+dependencies:
+  trackme_flutter:
+    git:
+      url: https://github.com/baato/trackme-sdk.git
+      path: flutter/trackme_flutter
+      ref: 0.3.0
+```
+The iOS pod downloads the matching `TrackMeSDK.xcframework` on the first `pod install`.
 
 ```dart
 import 'package:trackme_flutter/trackme_flutter.dart';
@@ -26,15 +35,16 @@ Every call throws `TrackMeException` (`type`, `message`) on failure. The whole A
 
 ## App setup
 
-- **Android:** `compileSdk 37`, `minSdk 24`. The plugin adds JitPack, limited to the TrackMe group, to your build's repositories.
+- **Android:** `compileSdk 36`+, `minSdk 24`, Android Gradle Plugin 8.11+ recommended (older 8.x builds with a warning). The plugin adds JitPack, limited to the TrackMe group, to your build's repositories.
 - **iOS 15+:** in `Info.plist`, add `NSLocationWhenInUseUsageDescription`, `NSLocationAlwaysAndWhenInUseUsageDescription` and `UIBackgroundModes` → `location`.
+- **iOS lock screen:** while sharing, a notification with Pause / Resume / Stop shows with no setup (ask for notification permission). For the Live Activity (lock screen + Dynamic Island), add the Widget Extension: `ruby scripts/ios-add-widget-extension.rb ios/Runner.xcodeproj Runner <TrackMeLiveActivity sources>` ([docs/07-ports.md](../../docs/07-ports.md)). `TrackMeSharingUi(iosLiveActivity: false)` turns both off.
 - **Permissions:** the SDK reports location permission (`TrackMe.location.permissionStatus()`) but never asks. Ask with your usual package.
 
 ## Developing against this repo's SDK
 
 ```bash
 ./gradlew :trackme-sdk:publishToMavenLocal -Ptrackme.version=0.3.0   # Android: SDK into ~/.m2
-scripts/port-ios-sdk.sh local                                         # iOS: SDK into ios/Frameworks/
+scripts/port-ios-sdk.sh local                                         # iOS: SDK into ios/Frameworks/ (+ ios/LiveActivity/)
 ```
 Then set `trackme.useLocalSdk=true` in the app's `android/gradle.properties`.
 

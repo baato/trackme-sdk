@@ -8,17 +8,7 @@ version = "0.3.0"
 def trackmeSdkVersion = "0.3.0"
 def useLocalSdk = (rootProject.findProperty("trackme.useLocalSdk") ?: "false").toString().toBoolean()
 
-buildscript {
-    ext.kotlin_version = "2.2.20"
-    repositories {
-        google()
-        mavenCentral()
-    }
-    dependencies {
-        classpath("com.android.tools.build:gradle:8.13.0")
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version")
-    }
-}
+// No buildscript: the host app supplies the Android and Kotlin Gradle plugins (and their versions).
 
 // The SDK comes from JitPack (released) or the local Maven repo (development). The app resolves this plugin's
 // dependencies with its own repositories, so they're added there; JitPack only for the TrackMe group.
@@ -39,20 +29,23 @@ apply plugin: "kotlin-android"
 
 android {
     namespace = "io.baato.trackme.flutter"
-    compileSdk = 37   // the TrackMe SDK requires compileSdk 37, so the app needs it too
+    compileSdk = 36   // the TrackMe SDK needs 36+, the newest AGP 8.x knows
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-    }
-    kotlinOptions {
-        jvmTarget = "17"
     }
     sourceSets {
         main.java.srcDirs += "src/main/kotlin"
     }
     defaultConfig {
         minSdk = 24
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
     }
 }
 

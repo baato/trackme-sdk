@@ -1,6 +1,6 @@
 # Flutter and React Native ports
 
-**Status:** in progress on the `ports` branch. Steps 1 and 2, the bridge core and both packages, are written; the sample apps come next.
+**Status:** in progress on the `ports` branch. Steps 1 and 2 (the bridge core and both packages) run on Android and iOS for both frameworks. Step 3, the Live map showcase plus a developer screen in each example, is written and being tried on devices.
 
 ## The approach: wrap the KMP SDK, don't rewrite it
 
@@ -115,7 +115,24 @@ JitPack and SwiftPM are unaffected. JitPack builds only `:trackme-sdk`, and the 
 |---|---|---|
 | Android | `./gradlew :trackme-sdk:publishToMavenLocal`, plugin reads `io.baato.trackme:trackme-sdk-android` from `mavenLocal()` | `com.github.baato.trackme-sdk:trackme-sdk-android:<sdk version>` from JitPack. **The app adds** `maven("https://jitpack.io")`, because Gradle rejects repositories declared by a plugin |
 | iOS | podspec vendors `trackme-sdk/build/XCFrameworks/release/TrackMeSDK.xcframework` | podspec downloads the release's `TrackMeSDK.xcframework.zip`. CocoaPods, because Flutter and React Native install native iOS code through it; SwiftPM support can follow |
-| Live Activity | `TrackMeLiveActivity` sources in the repo | Host apps add a **Widget Extension** target and link `TrackMeLiveActivity` (documented step). Expo: the config plugin does the Info.plist part |
+| iOS lock screen | `scripts/port-ios-sdk.sh` also copies the `TrackMeLiveActivity` sources and the native sample's `LiveActivityPresenter` into each package's `ios/LiveActivity/`, and the glue installs the presenter on `start` | Same files, shipped inside the packages |
+
+## iOS lock screen: notification out of the box, Live Activity with one step
+
+On Android the SDK's own foreground-service notification shows sharing. iOS has nothing like it, so the packages bring
+the `TrackMeLiveActivity` code with them and install its presenter when the session starts (no app code):
+
+- **No extra setup:** a notification with Pause / Resume / Stop while sharing (it needs notification permission,
+  which the examples ask for along with location). Its look comes from the same `sharingUi` as Android.
+- **With a Widget Extension:** the Live Activity on the lock screen and Dynamic Island (iOS 16.1+, buttons on 17+).
+  Apple only allows that UI in the app's own extension, so it's one step per app:
+  `ruby scripts/ios-add-widget-extension.rb <App.xcodeproj> <app target> <TrackMeLiveActivity sources dir>` adds a
+  `TrackMeWidget` target and `NSSupportsLiveActivities`. Both examples have it.
+- `TrackMeActivityController.hasWidgetExtension` picks between the two, so an app without the extension never asks
+  for a Live Activity that can't be drawn (this also protects native apps).
+- **Opt out:** `sharingUi: iosLiveActivity: false` when the app shows its own lock-screen UI.
+- An app with its own `UNUserNotificationCenter` delegate keeps it and forwards to
+  `TrackMeActivityController.shared.notificationDelegate.handle(response)`.
 
 ## Expo
 
@@ -125,13 +142,13 @@ Expo's autolinking links ordinary React Native modules as well as Expo modules, 
 
 1. ✅ **The bridge core** in the SDK, with tests. It ships in the next SDK release (0.3.0).
 2. ✅ **The packages:** `flutter/trackme_flutter` and `react-native/trackme-react-native`. Each has typed models and API, the platform glues, and dev wiring to the local SDK (`trackme.useLocalSdk=true`, `scripts/port-ios-sdk.sh local`). The TypeScript type-checks, and the React Native spec was run through React Native's codegen, whose generated Java and Objective-C signatures match the native code. The Flutter side and all native builds are checked when the example apps build.
-3. **Sample apps** in each package's `example/`: the Live map showcase plus developer screens, ported from the native samples. They use `maplibre_gl` on Flutter and `@maplibre/maplibre-react-native` on React Native, with the same `trackme.devTools` / secrets approach.
-4. **Release:** SDK 0.3.0 → Flutter plugin 0.3.0 (pub.dev) and the React Native module 0.3.0 (npm), versioned with the SDK. Then customer-style examples that install the published packages.
+3. **Sample apps** in each package's `example/`: the Live map showcase (start / join / invite, live members with "live / paused / 2 min ago", location pill and dialog, locate button, custom duration, countdown) and one developer screen with a control for every SDK call, ported from the native samples. Flutter uses `maplibre_gl` 0.27 (0.28 needs Flutter 3.44) and `share_plus`; React Native uses `@maplibre/maplibre-react-native` 11 and the built-in `Share`. Secrets: `secrets.json` / `src/secrets.ts`; the developer screen shows in debug builds (`TRACKME_DEV_TOOLS=false` / `DEV_TOOLS` hides it). Not ported yet: the Live Activity widget extension.
+4. **Release:** SDK 0.3.0, then the Flutter plugin 0.3.0 (git dependency: pub.dev only takes open-source licences) and the React Native module 0.3.0 (npm), versioned with the SDK ([05-releasing.md](05-releasing.md) section 8). Then customer-style examples that install the published packages.
 
 ## Risks to check in the first example builds
 
 - **Kotlin version:** the SDK is compiled with Kotlin 2.4. A host app whose Kotlin Gradle plugin is too old to read that metadata fails to compile the plugin's Kotlin code ("incompatible version of Kotlin"). Either the app uses a recent enough Kotlin, or the SDK's Android target sets a lower `languageVersion` / `apiVersion`. That's decided when the Flutter and React Native examples first build.
-- **compileSdk 37:** the SDK requires it, so the host app's Android Gradle Plugin must support API 37.
+- **compileSdk and AGP:** found in the first Flutter build. SDK 0.2.0 depended on `androidx.core` 1.19.1, which needs AGP 9.1+ and compileSdk 37, and Flutter apps (and many native ones) are on AGP 8.x. From 0.3.0 the SDK pins `androidx.core` 1.16.0. The second build then failed on compileSdk: an AAR records the lowest compileSdk an app may use (`minCompileSdk`), and both the SDK (built against 37) and OkHttp 5.5.0 (pulled in by Ktor 3.6.0) asked for 37. The SDK now builds against 36 and holds OkHttp at 5.4.0 (strict), which asks for 36. So apps need **compileSdk 36+**; AGP 8.11+ is recommended, and older 8.x versions only warn. `scripts/check-aar-metadata.sh` prints each OkHttp release's floor.
 - **The XCFramework through CocoaPods:** the podspecs vendor `ios/Frameworks/TrackMeSDK.xcframework` (static, arm64 only), so `pod install` must find it there first.
 
-Before publishing: npm allows a proprietary licence (`"license": "UNLICENSED"`). Check how pub.dev treats a non-open-source licence before the first Flutter publish.
+Publishing: npm allows a proprietary licence (`"license": "UNLICENSED"`); pub.dev requires an open-source one, so the Flutter plugin installs from git.

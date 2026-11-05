@@ -40,7 +40,7 @@ dependencyResolutionManagement {
         maven("https://jitpack.io") { content { includeGroup("com.github.baato.trackme-sdk") } }
     }
 }
-// app/build.gradle.kts  (compileSdk 37, minSdk 24)
+// app/build.gradle.kts  (compileSdk 36+, minSdk 24 (Android Gradle Plugin 8.11+ recommended; older 8.x builds with a warning))
 dependencies { implementation("com.github.baato.trackme-sdk:trackme-sdk-android:0.2.0") }
 ```
 

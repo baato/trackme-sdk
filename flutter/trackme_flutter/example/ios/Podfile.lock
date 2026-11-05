@@ -1,0 +1,47 @@
+PODS:
+  - Flutter (1.0.0)
+  - MapLibre (6.28.0)
+  - maplibre_gl (0.27.0):
+    - Flutter
+    - MapLibre (= 6.28.0)
+  - permission_handler_apple (9.4.8):
+    - Flutter
+  - share_plus (0.0.1):
+    - Flutter
+  - trackme_flutter (0.3.0):
+    - Flutter
+
+DEPENDENCIES:
+  - Flutter (from `Flutter`)
+  - maplibre_gl (from `.symlinks/plugins/maplibre_gl/ios`)
+  - permission_handler_apple (from `.symlinks/plugins/permission_handler_apple/ios`)
+  - share_plus (from `.symlinks/plugins/share_plus/ios`)
+  - trackme_flutter (from `.symlinks/plugins/trackme_flutter/ios`)
+
+SPEC REPOS:
+  trunk:
+    - MapLibre
+
+EXTERNAL SOURCES:
+  Flutter:
+    :path: Flutter
+  maplibre_gl:
+    :path: ".symlinks/plugins/maplibre_gl/ios"
+  permission_handler_apple:
+    :path: ".symlinks/plugins/permission_handler_apple/ios"
+  share_plus:
+    :path: ".symlinks/plugins/share_plus/ios"
+  trackme_flutter:
+    :path: ".symlinks/plugins/trackme_flutter/ios"
+
+SPEC CHECKSUMS:
+  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  MapLibre: 502506f9abd57330f11c19328217be3b121c3f13
+  maplibre_gl: ad68f3f1213b4dd48a9961adc6607681eea7c456
+  permission_handler_apple: 92d754bbaa7361d436db2d6c3c1c2a0fdcec462e
+  share_plus: eccd7beb7cea61271aeed1800e8ccb2b952c0c7f
+  trackme_flutter: f8974e1050c6224a09dfd29d0c0686a2ad75a888
+
+PODFILE CHECKSUM: 71bbd176c1c769cfaaf73321b47c48204ade87b0
+
+COCOAPODS: 1.16.2
