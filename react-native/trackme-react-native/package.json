@@ -2,8 +2,8 @@
   "name": "@baato/trackme-react-native",
   "version": "0.3.1",
   "description": "Live location sharing and trip groups for React Native apps, on Baato's TrackMe. Wraps the native TrackMe SDK (Android + iOS).",
-  "license": "UNLICENSED",
-  "author": "Baato",
+  "license": "SEE LICENSE IN LICENSE",
+  "author": "Kathmandu Living Labs Consult Pvt. Ltd. (Baato) <support@baato.io>",
   "homepage": "https://github.com/baato/trackme-sdk/tree/main/react-native/trackme-react-native",
   "repository": {
     "type": "git",

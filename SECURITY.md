@@ -2,7 +2,7 @@
 
 ## Reporting a vulnerability
 
-Please **don't open a public issue** for security problems. Email **<security contact at Baato>** with:
+Please **don't open a public issue** for security problems. Email **support@baato.io** (subject: "Security: TrackMe SDK") with:
 
 - what you found and where (file, endpoint, SDK version),
 - steps to reproduce,

@@ -95,7 +95,7 @@ publishing {
             url.set(repoUrl)
             licenses {
                 license {
-                    name.set("TrackMe SDK Source-Available License")
+                    name.set("TrackMe SDK License (source-available, all rights reserved)")
                     url.set("$repoUrl/blob/main/LICENSE")
                     distribution.set("repo")
                 }
@@ -104,7 +104,7 @@ publishing {
                 developer {
                     id.set("baato")
                     name.set("Baato")
-                    organization.set("Baato")
+                    organization.set("Kathmandu Living Labs Consult Pvt. Ltd. (Baato)")
                     organizationUrl.set("https://baato.io")
                 }
             }

@@ -86,3 +86,7 @@ Kotlin 2.4.20 · AGP 9.4.0 (`com.android.kotlin.multiplatform.library`) · Gradl
 - TrackMe API docs: https://tracker.baato.io/trackme/docs#/
 - API usage notes: [docs/trackme-api.md](docs/trackme-api.md)
 - Realtime (Socket.IO) contract: [docs/trackme-api.md → Realtime](docs/trackme-api.md#realtime-socketio); SDK usage: [docs/04-integration-guide.md §7](docs/04-integration-guide.md)
+
+## License
+
+Source-available, all rights reserved: Copyright (c) 2026 Kathmandu Living Labs Consult Pvt. Ltd. (Baato). You can read and evaluate the code; using the packages in an app comes with a Baato TrackMe API account. See [LICENSE](LICENSE). Contact: support@baato.io.

@@ -23,7 +23,7 @@ The security audit of 2 November 2026 found no secrets in the files that would b
 
 | # | To do | Why |
 |---|---|---|
-| 1 | Have Baato's legal counsel review `LICENSE`, and fill in the contacts in `LICENSE` and `SECURITY.md` | It's a draft source-available licence: public to read, no reuse without permission |
+| 1 | ✅ Done (6 Nov 2026): `LICENSE` is final, held by Kathmandu Living Labs Consult Pvt. Ltd.; contacts in `LICENSE` and `SECURITY.md` are support@baato.io. A later move to an open-source licence (e.g. Apache-2.0) only needs a new release | Source-available: public to read, use of the packages comes with a TrackMe API account |
 | 2 | Paste `~/Documents/TrackMe-backend-issues.md` into a **private** issue for the backend team, then delete the file | It describes unfixed privacy gaps. They were moved out of the public docs |
 | 3 | Add the Gradle wrapper checksum: `./gradlew wrapper --gradle-version 9.6.0 --gradle-distribution-sha256-sum <sha256>`. The sha256 for `gradle-9.6.0-bin.zip` is listed at https://gradle.org/release-checksums/ | Gradle then refuses a tampered download |
 | 4 | Ask the backend to **rotate the TrackMe API secret** if it was ever shared outside the team (e.g. the usage notes file) | The secret was never in this repo, but it did travel in a document |
