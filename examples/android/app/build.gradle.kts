@@ -22,7 +22,6 @@ android {
         versionCode = 1
         versionName = libs.versions.trackme.get()
 
-        buildConfigField("String", "TRACKME_API_SECRET", "\"${localProps.getProperty("trackme.apiSecret", "")}\"")
         buildConfigField("String", "TRACKME_API_URL", "\"https://tracker.baato.io/trackme/api\"")
         buildConfigField("String", "DEMO_EMAIL", "\"${localProps.getProperty("trackme.demoEmail", "android.example@trackme.dev")}\"")
         buildConfigField("String", "DEMO_NAME", "\"${localProps.getProperty("trackme.demoName", "Android Example")}\"")
@@ -32,8 +31,19 @@ android {
     // trackme.devTools=true | false in local.properties. Empty or missing = on for debug, off for release.
     val devTools = localProps.getProperty("trackme.devTools")?.trim()?.lowercase()?.toBooleanStrictOrNull()
     buildTypes {
-        debug { buildConfigField("boolean", "DEV_TOOLS", (devTools ?: true).toString()) }
-        release { buildConfigField("boolean", "DEV_TOOLS", (devTools ?: false).toString()) }
+        debug {
+            buildConfigField("boolean", "DEV_TOOLS", (devTools ?: true).toString())
+            // The demo API secret is compiled into debug builds only (your machine). Release builds, the ones you
+            // hand to testers, never contain it: testers type a key once (TesterKey). See SECURITY.md.
+            buildConfigField("String", "TRACKME_API_SECRET", "\"${localProps.getProperty("trackme.apiSecret", "")}\"")
+        }
+        release {
+            buildConfigField("boolean", "DEV_TOOLS", (devTools ?: false).toString())
+            buildConfigField("String", "TRACKME_API_SECRET", "\"\"")
+            // Tester APKs: trackme.signReleaseWithDebugKey=true signs with the debug key so phones install it.
+            // A store build uses a real release key instead.
+            if (localProps.getProperty("trackme.signReleaseWithDebugKey") == "true") signingConfig = signingConfigs.getByName("debug")
+        }
     }
 
     buildFeatures {

@@ -17,8 +17,9 @@ Nothing secret is in the code. Each value lives in a git-ignored file:
 
 | | Android: `local.properties` (repo root) | iOS: `sample-ios/Secrets.xcconfig` |
 |---|---|---|
-| TrackMe API secret (demo login only) | `trackme.apiSecret=…` | `TRACKME_API_SECRET = …` |
+| TrackMe API secret (demo login only) | `trackme.apiSecret=…`, compiled into **debug** builds only; release builds ask for a tester key instead | `TRACKME_API_SECRET = …` |
 | Baato map key | `baato.accessToken=…` | `BAATO_ACCESS_TOKEN = …` |
+| Sign release builds with the debug key (tester APKs) | `trackme.signReleaseWithDebugKey=true` | — |
 | Developer screens | `trackme.devTools=true\|false` (empty: on for debug, off for release) | `TRACKME_DEV_TOOLS = YES\|NO` (empty: on for Debug, off for Release) |
 
 The map loads `https://api.baato.io/api/v1/styles/breeze?key=<Baato key>`. Without a key the map area says so, and the rest still works.
@@ -27,6 +28,19 @@ The map loads `https://api.baato.io/api/v1/styles/breeze?key=<Baato key>`. Witho
 - **Dev tools off:** the app is the Live map only, which is what a host app's users would see.
 
 After changing `local.properties`, sync Gradle. After changing `Secrets.xcconfig` or adding files, re-run `xcodegen`.
+
+## Tester builds (Android)
+
+To hand an APK to testers, build a **release** build. It never contains the API secret:
+
+```bash
+# examples/android/local.properties: trackme.signReleaseWithDebugKey=true (so phones install it)
+cd examples/android && ./gradlew :app:assembleRelease     # → app/build/outputs/apk/release/app-release.apk
+```
+
+On first login the tester enters the **tester key**, i.e. the demo API secret, sent to them separately (not in the
+same message as the APK). The app keeps it encrypted with an Android Keystore key (`TesterKey.kt`). "Forget" on the
+login screen removes it. Why this matters and what it does and doesn't protect: [SECURITY.md](../SECURITY.md#tester-builds).
 
 ## Live map (showcase)
 

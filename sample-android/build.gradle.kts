@@ -22,7 +22,6 @@ android {
         versionCode = 1
         versionName = "0.2.0"
 
-        buildConfigField("String", "TRACKME_API_SECRET", "\"${localProps.getProperty("trackme.apiSecret", "")}\"")
         buildConfigField("String", "TRACKME_API_URL", "\"https://tracker.baato.io/trackme/api\"")
         // Pre-fills the demo login form (handy on emulators). Override in local.properties.
         buildConfigField("String", "DEMO_EMAIL", "\"${localProps.getProperty("trackme.demoEmail", "android.sample@trackme.dev")}\"")
@@ -38,9 +37,16 @@ android {
     buildTypes {
         debug {
             buildConfigField("boolean", "DEV_TOOLS", (devTools ?: true).toString())
+            // The demo API secret is compiled into debug builds only (your machine). Release builds, the ones you
+            // hand to testers, never contain it: testers type a key once (TesterKey). See SECURITY.md.
+            buildConfigField("String", "TRACKME_API_SECRET", "\"${localProps.getProperty("trackme.apiSecret", "")}\"")
         }
         release {
             buildConfigField("boolean", "DEV_TOOLS", (devTools ?: false).toString())
+            buildConfigField("String", "TRACKME_API_SECRET", "\"\"")
+            // Tester APKs: trackme.signReleaseWithDebugKey=true signs with the debug key so phones install it.
+            // A store build uses a real release key instead.
+            if (localProps.getProperty("trackme.signReleaseWithDebugKey") == "true") signingConfig = signingConfigs.getByName("debug")
         }
     }
 
