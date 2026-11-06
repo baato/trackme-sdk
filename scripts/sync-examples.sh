@@ -17,16 +17,18 @@ dst=examples/android/app/src/main
 rm -rf "$dst/kotlin"
 mkdir -p "$dst/kotlin/io/baato/trackme/example"
 for f in "$src"/kotlin/io/baato/trackme/sample/*.kt; do
-  sed -e 's/io\.baato\.trackme\.sample/io.baato.trackme.example/g' -e 's/"TrackMe Sample"/"TrackMe Example"/g' "$f" \
+  sed -e 's/io\.baato\.trackme\.sample/io.baato.trackme.example/g' -e 's/"TrackMe Sample"/"LocationShare"/g' "$f" \
     > "$dst/kotlin/io/baato/trackme/example/$(basename "$f")"
 done
-sed 's/android:label="TrackMe Sample"/android:label="TrackMe Example"/' "$src/AndroidManifest.xml" > "$dst/AndroidManifest.xml"
+sed 's/android:label="TrackMe Sample"/android:label="LocationShare"/' "$src/AndroidManifest.xml" > "$dst/AndroidManifest.xml"
+# Launcher icon (LocationShare: a pin sending its position, teal to blue).
+mkdir -p "$dst/res" && cp -R "$src/res/." "$dst/res/"
 
 # ---------- iOS ----------
 mkdir -p examples/ios/TrackMeExample examples/ios/TrackMeExampleWidget
 rm -f examples/ios/TrackMeExample/*.swift examples/ios/TrackMeExampleWidget/*.swift   # keeps the generated Info.plist
 for f in sample-ios/TrackMeSample/*.swift; do
-  sed 's/"TrackMe Sample"/"TrackMe Example"/g' "$f" > "examples/ios/TrackMeExample/$(basename "$f")"
+  sed 's/"TrackMe Sample"/"LocationShare"/g' "$f" > "examples/ios/TrackMeExample/$(basename "$f")"
 done
 cp sample-ios/TrackMeSampleWidget/*.swift examples/ios/TrackMeExampleWidget/
 

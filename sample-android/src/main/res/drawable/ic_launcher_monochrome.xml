@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- LocationShare launcher icon, monochrome (Android 13 themed icons): a location pin sending its position (two arcs). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#FFFFFFFF" android:fillType="evenOdd"
+        android:pathData="M44,81 C38,71 30.5,62 30.5,51 A16.5,16.5 0 1,1 63.5,51 C63.5,64 53,73 44,81 Z M40.8,51 A6.2,6.2 0 1,0 53.2,51 A6.2,6.2 0 1,0 40.8,51 Z" />
+    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="4.2" android:strokeLineCap="round"
+        android:pathData="M58.03,30.25 A23.5,23.5 0 0,1 70.27,54.27" />
+    <path android:strokeColor="#BFFFFFFF" android:strokeWidth="4.2" android:strokeLineCap="round"
+        android:pathData="M63.43,24.71 A31,31 0 0,1 77.92,53.16" />
+</vector>

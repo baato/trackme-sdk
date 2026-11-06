@@ -182,7 +182,7 @@ private fun LoginScreen(vm: SampleViewModel, busy: Boolean) {
     var showPause by rememberSaveable { mutableStateOf(true) }
     var showStop by rememberSaveable { mutableStateOf(true) }
 
-    Scaffold(topBar = { TopAppBar(title = { Text("TrackMe Example") }) }) { padding ->
+    Scaffold(topBar = { TopAppBar(title = { Text("LocationShare") }) }) { padding ->
         Column(
             Modifier.padding(padding).imePadding().padding(16.dp).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp),
