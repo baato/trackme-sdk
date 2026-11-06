@@ -7,9 +7,10 @@ How the repo goes public on GitHub, and how a version of TrackMe gets from this 
 | Android | JitPack (current): `com.github.baato.trackme-sdk:trackme-sdk-android:<tag>`, built from the git tag. Own group `io.baato.trackme` if moved to Maven Central or a Baato repository | `implementation("com.github.baato.trackme-sdk:trackme-sdk-android:<tag>")` with `maven("https://jitpack.io")` |
 | iOS | `TrackMeSDK.xcframework` (static, device + Apple-silicon simulator) and the `TrackMeLiveActivity` Swift package | SwiftPM: the repo's git URL and a version tag |
 
-The version comes from `-Ptrackme.version=…` (default `0.3.1` in `trackme-sdk/build.gradle.kts`). Use the same number on both platforms.
+The version comes from `-Ptrackme.version=…` (default `0.3.2` in `trackme-sdk/build.gradle.kts`). Use the same number on both platforms.
 
 **Released:**
+- `0.3.2` (6 Nov 2026): the final licence (Kathmandu Living Labs Consult Pvt. Ltd., source-available, all rights reserved) in every package; npm shows "SEE LICENSE IN LICENSE". No code changes from 0.3.1.
 - `0.3.1` (5 Nov 2026): apps resolving the SDK from JitPack got OkHttp 5.5 (compileSdk 37) again, because JitPack serves the POM, which can't carry 0.3.0's strict version. Ktor's OkHttp is now excluded and 5.4.0 declared directly. **Use 0.3.1 instead of 0.3.0 on Android**, and for the Flutter / React Native packages.
 - `0.3.0` (5 Nov 2026): Flutter (`trackme_flutter`, git) and React Native (`@baato/trackme-react-native`, npm) packages over a JSON bridge in the SDK; apps build with compileSdk 36 / AGP 8.x again (SDK compiled against 36, OkHttp held at 5.4.0); iOS lock screen falls back to the notification without a Widget Extension, and keeps an app's own notification delegate.
 - `0.2.0` (3 Nov 2026): trip countdown in the notification / Live Activity, sharing-state reporting (`MemberSharingChanged`, ready for the backend), server-owned duration / list limits, iOS main-thread fix, compact Live Activity.

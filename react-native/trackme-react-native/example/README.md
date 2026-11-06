@@ -22,7 +22,7 @@ Every SDK call is in `src/store.ts`. The screens (`src/LiveMap.tsx`, `src/Develo
    The API secret is **demo only**: the example logs in by itself. A real app gets its token from its own backend.
 2. The SDK, built from this repo (from the repo root):
    ```bash
-   ./gradlew :trackme-sdk:publishToMavenLocal -Ptrackme.version=0.3.1   # Android (android/gradle.properties: trackme.useLocalSdk=true)
+   ./gradlew :trackme-sdk:publishToMavenLocal -Ptrackme.version=0.3.2   # Android (android/gradle.properties: trackme.useLocalSdk=true)
    scripts/port-ios-sdk.sh local                                         # iOS
    ```
    To use the released SDK instead, set `trackme.useLocalSdk=false` for Android. For iOS, delete `../ios/Frameworks/TrackMeSDK.version`, and `pod install` then downloads the release.

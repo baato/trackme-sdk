@@ -30,7 +30,7 @@ end
 
 Pod::Spec.new do |s|
   s.name             = 'trackme_flutter'
-  s.version          = '0.3.1'
+  s.version          = '0.3.2'
   s.summary          = 'TrackMe live location sharing for Flutter (wraps the native TrackMe SDK).'
   s.homepage         = 'https://github.com/baato/trackme-sdk'
   s.license          = { :type => 'Proprietary', :file => '../LICENSE' }

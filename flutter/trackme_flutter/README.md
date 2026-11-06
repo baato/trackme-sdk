@@ -19,7 +19,7 @@ dependencies:
     git:
       url: https://github.com/baato/trackme-sdk.git
       path: flutter/trackme_flutter
-      ref: 0.3.1
+      ref: 0.3.2
 ```
 
 `ref` is the SDK release tag. The plugin's Android side pulls the same SDK version from JitPack. Its iOS pod downloads that release's `TrackMeSDK.xcframework` on the first `pod install` and checks it against its SHA-256.
@@ -109,7 +109,7 @@ What each platform shows:
 - **iOS, no setup:** while sharing, a notification with Pause / Resume / Stop.
 - **iOS Live Activity** (lock screen + Dynamic Island, iOS 16.1+, buttons on 17+): Apple only allows this UI in the app's own Widget Extension, so it takes one step:
   1. In Xcode (`ios/Runner.xcworkspace`): *File → New → Target… → Widget Extension*, deployment target 16.1. Uncheck the Live Activity and Configuration options.
-  2. *File → Add Package Dependencies…* → `https://github.com/baato/trackme-sdk`, version `0.3.1`. Add the product **`TrackMeLiveActivity` to the widget target only**.
+  2. *File → Add Package Dependencies…* → `https://github.com/baato/trackme-sdk`, version `0.3.2`. Add the product **`TrackMeLiveActivity` to the widget target only**.
   3. Replace the generated widget code with:
      ```swift
      import SwiftUI
@@ -136,7 +136,7 @@ Its README says how to run it.
 ## Developing against this repo's SDK
 
 ```bash
-./gradlew :trackme-sdk:publishToMavenLocal -Ptrackme.version=0.3.1   # Android: SDK into ~/.m2
+./gradlew :trackme-sdk:publishToMavenLocal -Ptrackme.version=0.3.2   # Android: SDK into ~/.m2
 scripts/port-ios-sdk.sh local                                         # iOS: SDK build into ios/Frameworks/, lock-screen code into ios/LiveActivity/
 ```
 Then set `trackme.useLocalSdk=true` in the app's `android/gradle.properties`.

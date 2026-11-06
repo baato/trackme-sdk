@@ -131,7 +131,7 @@ Its README says how to run it.
 ## Developing against this repo's SDK
 
 ```bash
-./gradlew :trackme-sdk:publishToMavenLocal -Ptrackme.version=0.3.1   # Android: SDK into ~/.m2
+./gradlew :trackme-sdk:publishToMavenLocal -Ptrackme.version=0.3.2   # Android: SDK into ~/.m2
 scripts/port-ios-sdk.sh local                                         # iOS: SDK build into ios/Frameworks/, lock-screen code into ios/LiveActivity/
 ```
 Then set `trackme.useLocalSdk=true` in the app's `android/gradle.properties`. `npm run typecheck` checks the TypeScript.

@@ -2,9 +2,9 @@
 // native TrackMe SDK.
 
 // The TrackMe SDK version this module wraps. Development against this repo's SDK source:
-//   ./gradlew :trackme-sdk:publishToMavenLocal -Ptrackme.version=0.3.1   (repo root)
+//   ./gradlew :trackme-sdk:publishToMavenLocal -Ptrackme.version=0.3.2   (repo root)
 // and `trackme.useLocalSdk=true` in the app's android/gradle.properties.
-def trackmeSdkVersion = "0.3.1"
+def trackmeSdkVersion = "0.3.2"
 def useLocalSdk = (rootProject.findProperty("trackme.useLocalSdk") ?: "false").toString().toBoolean()
 
 // No buildscript: the host app supplies the Android and Kotlin Gradle plugins (and their versions).
