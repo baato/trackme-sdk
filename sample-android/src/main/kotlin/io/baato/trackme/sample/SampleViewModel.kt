@@ -206,7 +206,6 @@ class SampleViewModel(app: Application) : AndroidViewModel(app) {
     val realtimeState = TrackMe.realtime.state
 
     init {
-        DemoAuth.init(app)
         // Dev builds: SDK diagnostics (socket handshake, joins, every live message) in logcat and the SDK tab's log.
         if (BuildConfig.DEV_TOOLS) TrackMe.debugLogger = { line -> android.util.Log.d("TrackMe", line); log("sdk  $line") }
         viewModelScope.launch { TrackMe.events.collect(::onEvent) }
@@ -277,7 +276,7 @@ class SampleViewModel(app: Application) : AndroidViewModel(app) {
     // ======================= lifecycle =======================
 
     fun login(form: LoginForm) = run("Logging in") {
-        if (!DemoAuth.isConfigured) return@run fail("Enter the tester key (release builds), or add trackme.apiSecret to local.properties (debug builds).")
+        if (!DemoAuth.isConfigured) return@run fail("Add trackme.apiSecret to local.properties (demo only).")
         val token = DemoAuth.login(form.email, form.fullName) ?: return@run fail("Login failed (check email / secret / network).")
 
         val config = TrackMeConfig(

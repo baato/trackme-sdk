@@ -12,24 +12,17 @@ import java.net.URL
  * In a real app this call lives on YOUR backend (the secret must never ship inside an app). The app then
  * receives the token from its backend and passes it to `TrackMe.initialize(...)`. The SDK itself never logs in.
  *
- * Where the secret comes from: debug builds compile it in from local.properties (your own machine only). Release
- * builds don't contain it: a tester types it in once and it's kept encrypted on the phone ([TesterKey]).
+ * The secret isn't in the APK as text: the build stores it XOR-ed with a random pad made for that build
+ * (`TRACKME_SECRET_A` / `_B`, see build.gradle.kts) and it's put back together here, only when logging in.
+ * Searching or decompiling the APK finds two arrays of numbers. This only hides it from a casual look: someone
+ * who reads this code, hooks the app at runtime or intercepts the login request can still get it (SECURITY.md).
  */
 object DemoAuth {
-    private lateinit var appContext: android.content.Context
-
-    fun init(context: android.content.Context) {
-        appContext = context.applicationContext
+    private fun secret(): String {
+        val a = BuildConfig.TRACKME_SECRET_A
+        val b = BuildConfig.TRACKME_SECRET_B
+        return String(ByteArray(a.size) { (a[it].toInt() xor b[it].toInt()).toByte() })
     }
-
-    /** True when this build has the secret compiled in (debug builds with local.properties). */
-    val isEmbedded: Boolean get() = BuildConfig.TRACKME_API_SECRET.isNotBlank()
-
-    private fun secret(): String = BuildConfig.TRACKME_API_SECRET.ifBlank { TesterKey.load(appContext).orEmpty() }
-
-    fun saveTesterKey(secret: String) = TesterKey.save(appContext, secret.trim())
-    fun forgetTesterKey() = TesterKey.clear(appContext)
-    val hasTesterKey: Boolean get() = TesterKey.load(appContext) != null
 
     suspend fun login(email: String, fullName: String?): String? = withContext(Dispatchers.IO) {
         runCatching {
@@ -51,5 +44,5 @@ object DemoAuth {
         }.getOrNull()
     }
 
-    val isConfigured: Boolean get() = secret().isNotBlank()
+    val isConfigured: Boolean get() = BuildConfig.TRACKME_SECRET_A.isNotEmpty()
 }

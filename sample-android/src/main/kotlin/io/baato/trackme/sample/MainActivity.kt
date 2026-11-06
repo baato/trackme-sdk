@@ -47,7 +47,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -182,9 +181,6 @@ private fun LoginScreen(vm: SampleViewModel, busy: Boolean) {
     var accent by rememberSaveable { mutableStateOf(0xFF1565C0) }
     var showPause by rememberSaveable { mutableStateOf(true) }
     var showStop by rememberSaveable { mutableStateOf(true) }
-    // Release builds carry no secret: the tester types the key once (stored encrypted, see TesterKey).
-    var testerKey by remember { mutableStateOf("") }
-    var hasTesterKey by remember { mutableStateOf(DemoAuth.hasTesterKey) }
 
     Scaffold(topBar = { TopAppBar(title = { Text("TrackMe Sample") }) }) { padding ->
         Column(
@@ -194,30 +190,13 @@ private fun LoginScreen(vm: SampleViewModel, busy: Boolean) {
             if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
             Text("Demo login", style = MaterialTheme.typography.titleLarge)
             Caption(
-                "The sample logs in with the TrackMe API secret: from local.properties in debug builds, or the " +
-                    "tester key you type in release builds. A real app gets the token " +
+                "The sample logs in with the API secret from local.properties. A real app gets the token " +
                     "from its own backend and only calls TrackMe.initialize(context, config). " +
                     "Log in with a different email on a second device to test trips together.",
             )
             OutlinedTextField(email, { email = it }, label = { Text("Email") }, singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email), modifier = Modifier.fillMaxWidth())
             OutlinedTextField(name, { name = it }, label = { Text("Full name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-            if (!DemoAuth.isEmbedded) {
-                if (hasTesterKey) {
-                    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                        Caption("Tester key saved on this phone (encrypted).")
-                        androidx.compose.material3.TextButton(onClick = { DemoAuth.forgetTesterKey(); hasTesterKey = false }) { Text("Forget") }
-                    }
-                } else {
-                    OutlinedTextField(
-                        testerKey, { testerKey = it }, label = { Text("Tester key") }, singleLine = true,
-                        visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                        supportingText = { Text("Given to you by the TrackMe team. Saved encrypted on this phone, not in the app.") },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-            }
 
             if (BuildConfig.DEV_TOOLS) SectionCard("Sharing notification (TrackMeSharingUi)") {
                 OutlinedTextField(title, { title = it }, label = { Text("Title") }, singleLine = true, modifier = Modifier.fillMaxWidth())
@@ -229,11 +208,8 @@ private fun LoginScreen(vm: SampleViewModel, busy: Boolean) {
             }
 
             Button(
-                onClick = {
-                    if (testerKey.isNotBlank()) { DemoAuth.saveTesterKey(testerKey); testerKey = ""; hasTesterKey = true }
-                    vm.login(LoginForm(email.trim(), name.trim(), title, text, accent, showPause, showStop))
-                },
-                enabled = email.contains("@") && !busy && (DemoAuth.isEmbedded || hasTesterKey || testerKey.isNotBlank()),
+                onClick = { vm.login(LoginForm(email.trim(), name.trim(), title, text, accent, showPause, showStop)) },
+                enabled = email.contains("@") && !busy,
                 modifier = Modifier.fillMaxWidth(),
             ) { Text("Log in & initialize SDK") }
         }
