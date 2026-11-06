@@ -78,6 +78,7 @@ struct BaatoMapView: UIViewRepresentable {
         let map = MLNMapView(frame: .zero, styleURL: Baato.styleURL)
         map.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         map.setCenter(Baato.kathmandu, zoomLevel: 12, animated: false)
+        map.maximumZoomLevel = 23   // past this the style has no detail left and the map turns black
         map.showsUserLocation = showsUser
         map.automaticallyAdjustsContentInset = false   // we set it: top buttons + the panel
         map.delegate = context.coordinator
@@ -243,9 +244,10 @@ final class MemberDotView: MLNAnnotationView {
         addSubview(dot)
 
         label.font = .systemFont(ofSize: 12, weight: .semibold)
-        label.textColor = .label
+        // The Baato map stays light in dark mode, so the name keeps dark text with a white halo (as on Android).
+        label.textColor = UIColor(white: 0.11, alpha: 1)
         label.textAlignment = .center
-        label.layer.shadowColor = UIColor.systemBackground.cgColor
+        label.layer.shadowColor = UIColor.white.cgColor
         label.layer.shadowOpacity = 1
         label.layer.shadowRadius = 2
         label.layer.shadowOffset = .zero

@@ -126,7 +126,8 @@ export function BaatoMap(props: {
       compass
       attributionPosition={{ bottom: bottomInset + 8, left: 8 }}
       onDidFailLoadingMap={() => onError('Map failed to load (check BAATO_ACCESS_TOKEN in src/secrets.ts).')}>
-      <Camera ref={camera} initialViewState={{ center: KATHMANDU, zoom: 12 }} />
+      {/* Past zoom 23 the style has no detail left and the map turns black. */}
+      <Camera ref={camera} initialViewState={{ center: KATHMANDU, zoom: 12 }} maxZoom={23} />
       {showMe ? <NativeUserLocation /> : null}
       <GeoJSONSource
         id="trackme-members"

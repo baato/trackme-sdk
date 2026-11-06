@@ -119,7 +119,7 @@ private struct LoginView: View {
                 .disabled(!form.email.contains("@") || model.busy)
             }
         }
-        .navigationTitle("TrackMe Example")
+        .navigationTitle("LocationShare")
     }
 }
 

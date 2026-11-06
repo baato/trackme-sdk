@@ -67,7 +67,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContent { MaterialTheme { SampleApp(vm) } }
+        setContent { SampleTheme { SampleApp(vm) } }
     }
 }
 
@@ -166,6 +166,28 @@ private fun DeveloperScreen(vm: SampleViewModel, ui: SampleUiState, modifier: Mo
             }
         }
     }
+}
+
+// ======================= theme =======================
+
+/** Light and dark, following the system setting, in the app's blue. */
+@Composable
+fun SampleTheme(content: @Composable () -> Unit) {
+    val colors = if (androidx.compose.foundation.isSystemInDarkTheme()) {
+        androidx.compose.material3.darkColorScheme(
+            primary = androidx.compose.ui.graphics.Color(0xFFA8C7FA),
+            onPrimary = androidx.compose.ui.graphics.Color(0xFF002F66),
+            primaryContainer = androidx.compose.ui.graphics.Color(0xFF0B3A78),
+            onPrimaryContainer = androidx.compose.ui.graphics.Color(0xFFD6E3FF),
+        )
+    } else {
+        androidx.compose.material3.lightColorScheme(
+            primary = androidx.compose.ui.graphics.Color(0xFF1565C0),
+            primaryContainer = androidx.compose.ui.graphics.Color(0xFFD6E3FF),
+            onPrimaryContainer = androidx.compose.ui.graphics.Color(0xFF001B3E),
+        )
+    }
+    MaterialTheme(colorScheme = colors, content = content)
 }
 
 // ======================= login =======================

@@ -212,6 +212,27 @@ class SampleViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { TrackMe.realtime.state.collect { log("Live: $it") } }
         viewModelScope.launch { TrackMe.sharing.state.collect { log("Sharing: ${it::class.simpleName}") } }
         viewModelScope.launch { TrackMe.state.collect { log("SDK: ${it::class.simpleName}") } }
+        restoreSession()
+    }
+
+    /**
+     * Reopening the app: back to where the user was, without the login screen.
+     * - The process is still alive (sharing kept it running in the background): the SDK is still initialized, so
+     *   only the screens come back. Calling initialize() again would replace the session and stop the sharing.
+     * - A fresh start: log in again with the saved form (a new token, as on first login).
+     */
+    private fun restoreSession() {
+        val form = SavedLogin.load(getApplication()) ?: return
+        if (TrackMe.isInitialized) {
+            _ui.update { it.copy(login = form) }
+            log("Session restored for ${form.email}")
+            refreshPermission()
+            loadTrips()
+            loadNotifications(reset = true)
+            mapRefresh()
+        } else {
+            login(form)
+        }
     }
 
     /** One place for every TrackMeEvent. */
@@ -293,6 +314,7 @@ class SampleViewModel(app: Application) : AndroidViewModel(app) {
         )
         when (val r = TrackMe.initialize(getApplication<Application>(), config)) {
             is TrackMeResult.Success -> {
+                SavedLogin.save(getApplication(), form)
                 _ui.update { it.copy(login = form) }
                 log("Initialized as ${form.email}")
                 refreshPermission()
@@ -307,6 +329,7 @@ class SampleViewModel(app: Application) : AndroidViewModel(app) {
     /** dispose(): stops sharing, removes the notification, closes the socket and HTTP. Safe to call twice. */
     fun logout() {
         TrackMe.dispose()
+        SavedLogin.clear(getApplication())
         _ui.value = SampleUiState(log = _ui.value.log)
         log("Disposed")
     }

@@ -13,7 +13,7 @@ configFiles:
 packages:
   TrackMe:                         # products: TrackMeSDK (XCFramework) + TrackMeLiveActivity
     url: https://github.com/baato/trackme-sdk
-    from: 0.2.0   # the app code uses 0.2.0 APIs (countdown, sharing state)
+    from: 0.3.2   # the latest SDK release
   MapLibre:                        # the live map (Baato breeze style)
     url: https://github.com/maplibre/maplibre-gl-native-distribution
     from: 6.29.0
@@ -29,7 +29,7 @@ targets:
     info:
       path: TrackMeExample/Info.plist
       properties:
-        CFBundleDisplayName: TrackMe Example
+        CFBundleDisplayName: LocationShare
         UILaunchScreen: {}
         NSLocationWhenInUseUsageDescription: Share your live location with members of your trip.
         NSLocationAlwaysAndWhenInUseUsageDescription: Keep sharing your location with your trip while the app is in the background.
@@ -48,6 +48,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.baato.trackme.example
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon   # LocationShare icon (TrackMeExample/Assets.xcassets)
 
   # Widget Extension that draws the Live Activity (lock screen + Dynamic Island).
   TrackMeExampleWidget:

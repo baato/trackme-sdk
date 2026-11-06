@@ -231,6 +231,7 @@ class _BaatoMapState extends State<BaatoMap> {
   Widget build(BuildContext context) => MapLibreMap(
         styleString: baatoStyleUrl,
         initialCameraPosition: const CameraPosition(target: kathmandu, zoom: 12),
+        minMaxZoomPreference: const MinMaxZoomPreference(null, 23), // past 23 the style has no detail and turns black
         onMapCreated: (c) {
           _c = c;
           // Tap a member dot (or its name) → fly to them.

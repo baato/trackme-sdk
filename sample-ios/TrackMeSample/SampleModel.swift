@@ -54,7 +54,7 @@ func inviteText(tripName: String, viewLink: String?, joinCode: String?) -> Strin
 }
 
 /// What the login screen collects: who to log in as, and how the Live Activity / notification looks.
-struct LoginForm {
+struct LoginForm: Codable {
     var email: String
     var fullName: String
     var title = "Sharing your location"
@@ -173,6 +173,29 @@ final class SampleModel: NSObject, ObservableObject, CLLocationManagerDelegate {
             self?.sdkState = String(describing: type(of: state))
             self?.append("SDK: \(String(describing: type(of: state)))")
         })
+        restoreSession()
+    }
+
+    /// Who is logged in (the login form, not the token), so reopening the app goes straight back in. A real app keeps
+    /// its own user session the same way and gets a fresh TrackMe token from its backend.
+    private static let savedLoginKey = "trackme.savedLogin"
+
+    /// Reopening the app: back to where the user was, without the login screen.
+    /// - The SDK is still initialized (the app stayed alive in the background, e.g. while sharing): only the screens
+    ///   come back. Calling initialize() again would replace the session and stop the sharing.
+    /// - A fresh start: log in again with the saved form (a new token, as on first login).
+    private func restoreSession() {
+        guard let data = UserDefaults.standard.data(forKey: Self.savedLoginKey),
+              let form = try? JSONDecoder().decode(LoginForm.self, from: data) else { return }
+        if TrackMe.shared.isInitialized {
+            session = form
+            append("Session restored for \(form.email)")
+            refreshPermission()
+            loadTrips()
+            mapRefresh()
+        } else {
+            login(form)
+        }
     }
 
     deinit { observers.forEach { $0.cancel() } }
@@ -245,6 +268,7 @@ final class SampleModel: NSObject, ObservableObject, CLLocationManagerDelegate {
             )
             _ = try unwrap(TrackMe.shared.initialize(context: PlatformContext(), config: config))
             self.session = form
+            UserDefaults.standard.set(try? JSONEncoder().encode(form), forKey: Self.savedLoginKey)
             self.append("Initialized as \(form.email)")
             self.refreshPermission()
             await self.loadTripsNow()
@@ -256,6 +280,7 @@ final class SampleModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     /// dispose(): stops sharing, ends the Live Activity, closes socket + HTTP. Safe to call twice.
     func logout() {
         TrackMe.shared.dispose()
+        UserDefaults.standard.removeObject(forKey: Self.savedLoginKey)
         session = nil; trips = []; created = nil; preview = nil; detail = nil; permission = nil; locationAutoAsked = false
         livePositions = [:]; livePositionAt = [:]; memberSharing = [:]; viewerPositions = [:]; viewerWatching = false; notifications = []; health = nil
         mapDetail = nil; mapLiveTrips = []; mapViewLink = nil; invite = nil; mapSharingError = nil; liveTripId = nil

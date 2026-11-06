@@ -134,6 +134,7 @@ fun BaatoMap(
         }
         mapView.getMapAsync { m ->
             m.cameraPosition = CameraPosition.Builder().target(Baato.KATHMANDU).zoom(12.0).build()
+            m.setMaxZoomPreference(23.0)   // past this the style has no detail left and the map turns black
             m.uiSettings.isCompassEnabled = true
             // Tap a member dot (or its name) → fly to them.
             m.addOnMapClickListener { point ->
